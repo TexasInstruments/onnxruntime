@@ -64,6 +64,15 @@ struct OrtStatus {
 #define BACKEND_MIGRAPHX ""
 #endif
 
+#if USE_TIDL
+#define BACKEND_TIDL "-TIDL"
+//#include "core/providers/tidl/tidl_execution_provider.h"
+#else
+#define BACKEND_TIDL ""
+#endif
+
+
+
 #ifdef USE_OPENVINO
 #if OPENVINO_CONFIG_CPU_FP32
 #define BACKEND_OPENVINO "-OPENVINO_CPU_FP32"
@@ -130,7 +139,7 @@ struct OrtStatus {
 #define BACKEND_DML ""
 #endif
 
-#define BACKEND_DEVICE BACKEND_PROC BACKEND_DNNL BACKEND_OPENVINO BACKEND_NUPHAR BACKEND_OPENBLAS BACKEND_MIGRAPHX BACKEND_ACL BACKEND_ARMNN BACKEND_DML
+#define BACKEND_DEVICE BACKEND_PROC BACKEND_DNNL BACKEND_TIDL BACKEND_OPENVINO BACKEND_NUPHAR BACKEND_OPENBLAS BACKEND_MIGRAPHX BACKEND_ACL BACKEND_ARMNN BACKEND_DML
 #include "core/session/onnxruntime_cxx_api.h"
 #include "core/providers/providers.h"
 #include "core/providers/cpu/cpu_execution_provider.h"
@@ -160,6 +169,12 @@ onnxruntime::ArenaExtendStrategy arena_extend_strategy = onnxruntime::ArenaExten
 #ifdef USE_MIGRAPHX
 #include "core/providers/migraphx/migraphx_provider_factory.h"
 #endif
+
+#ifdef USE_TIDL
+#include "core/providers/tidl/tidl_provider_factory.h"
+std::vector<std::string> options_tidl_onnx_vec;
+#endif
+
 #ifdef USE_OPENVINO
 #include "core/providers/openvino/openvino_provider_factory.h"
 // TODO remove deprecated global config
@@ -193,6 +208,7 @@ namespace onnxruntime {
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tensorrt(const OrtTensorRTProviderOptions* params);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_MIGraphX(int device_id);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Dnnl(int use_arena);
+std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(std::vector<std::string> options_tidl_onnx_vec);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_OpenVINO(const OrtOpenVINOProviderOptions* params);
 #ifdef USE_OPENVINO
 const ProviderInfo_OpenVINO* GetProviderInfo_OpenVINO();
@@ -543,7 +559,13 @@ static void RegisterExecutionProviders(InferenceSession* sess, const std::vector
       RegisterExecutionProvider(
           sess, *onnxruntime::CreateExecutionProviderFactory_Dnnl(sess->GetSessionOptions().enable_cpu_mem_arena));
 #endif
-    } else if (type == kOpenVINOExecutionProvider) {
+    } 
+    else if (type == kTidlExecutionProvider) {
+#ifdef USE_TIDL
+      RegisterExecutionProvider(sess, *onnxruntime::CreateExecutionProviderFactory_Tidl(options_tidl_onnx_vec));
+#endif
+    }
+    else if (type == kOpenVINOExecutionProvider) {
 #ifdef USE_OPENVINO
       OrtOpenVINOProviderOptions params;
       params.device_type = openvino_device_type.c_str();
@@ -799,6 +821,23 @@ void addGlobalMethods(py::module& m, Environment& env) {
       "Gets the dynamically selected OpenVINO device type for inference.");
 #endif
 
+#ifdef USE_TIDL  
+  m.def("set_TIDLOnnxDelegate_options", [](py::dict options_tidl_onnx_dict) {
+    for (std::pair<py::handle, py::handle> item : options_tidl_onnx_dict)
+    {
+      std::stringstream key, value;
+      key << item.first;
+      value << item.second;
+      auto option_name = key.str();
+      auto option_value = value.str();
+      //std::cout << option_name << " : " << option_value << std::endl;
+      // Add condition to check even number of values in options_tidl_onnx_vec and number < 100
+      options_tidl_onnx_vec.push_back(option_name);
+      options_tidl_onnx_vec.push_back(option_value);
+    }
+  });
+#endif
+
 #ifdef onnxruntime_PYBIND_EXPORT_OPSCHEMA
   m.def(
       "get_all_operator_schema", []() -> const std::vector<ONNX_NAMESPACE::OpSchema> {
@@ -837,6 +876,10 @@ void addGlobalMethods(py::module& m, Environment& env) {
 #ifdef USE_DNNL
             onnxruntime::CreateExecutionProviderFactory_Dnnl(1),
 #endif
+#ifdef USE_TIDL
+            onnxruntime::CreateExecutionProviderFactory_Tidl(),
+#endif
+
 #ifdef USE_OPENVINO
             onnxruntime::CreateExecutionProviderFactory_OpenVINO(openvino_device_type, false, "", 8),
 #endif

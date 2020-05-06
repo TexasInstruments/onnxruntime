@@ -41,6 +41,9 @@ for arg in sys.argv[1:]:
 if '--use_tensorrt' in sys.argv:
     package_name = 'onnxruntime-gpu-tensorrt' if not nightly_build else 'ort-trt-nightly'
     sys.argv.remove('--use_tensorrt')
+if '--use_tidl' in sys.argv:
+    package_name = 'onnxruntime-tidl'
+    sys.argv.remove('--use_tidl')
 elif '--use_cuda' in sys.argv:
     package_name = 'onnxruntime-gpu' if not nightly_build else 'ort-gpu-nightly'
     sys.argv.remove('--use_cuda')

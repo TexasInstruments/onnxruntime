@@ -460,6 +460,7 @@ set(ONNXRUNTIME_TEST_LIBS
     ${PROVIDERS_ARMNN}
     ${PROVIDERS_ROCM}
     ${PROVIDERS_COREML}
+    ${PROVIDERS_TIDL}
     onnxruntime_optimizer
     onnxruntime_providers
     onnxruntime_util

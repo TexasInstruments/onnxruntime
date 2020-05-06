@@ -35,6 +35,11 @@ include(CheckLanguage)
 # On the other hand it does not allow some others.
 # So we cant' regulate simply with the standard.
 set(CMAKE_CXX_STANDARD 14)
+if(DEFINED ENV{TIDL_ROOT})
+    message("TIDL_ROOT = $ENV{TIDL_ROOT}")
+else()
+    message("\n \n \n *********************************** ERROR : Please set TIDL_ROOT env variable ********************************** \n \n \n")
+endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # NOTE: POSITION INDEPENDENT CODE hurts performance, and it only make sense on POSIX systems
@@ -369,6 +374,12 @@ set(ONNXRUNTIME_ROOT ${PROJECT_SOURCE_DIR}/../onnxruntime)
 set(ORTTRAINING_ROOT ${PROJECT_SOURCE_DIR}/../orttraining)
 set(ORTTRAINING_SOURCE_DIR ${ORTTRAINING_ROOT}/orttraining)
 
+set(TIDL_RT_INCLUDE_DIR $ENV{TIDL_ROOT}/ti_dl/rt/inc)
+set(TIDL_INCLUDE_DIR $ENV{TIDL_ROOT}/ti_dl/inc)
+set(TIDL_IT_INCLUDE_DIR $ENV{TIDL_ROOT}/ti_dl/utils/tidlModelImport)
+set(TIDL_IVISION_INCLUDE_DIR $ENV{PSDK_INSTALL_PATH}/ivision)
+set(TIDL_ONNX_INFER_INCLUDE_DIR $ENV{TIDL_ROOT}/ti_dl/onnxrt_EP/src)
+set(TIDL_COMMON_DIR $ENV{TIDL_ROOT}/common)
 file (STRINGS "${REPO_ROOT}/VERSION_NUMBER" ORT_VERSION)
 
 # Guarantee that the Eigen code that you are #including is licensed
@@ -1050,8 +1061,8 @@ else()
   string(APPEND CMAKE_C_FLAGS " -Wall -Wextra")
 
   if(onnxruntime_DEV_MODE)
-    string(APPEND CMAKE_CXX_FLAGS " -Werror")
-    string(APPEND CMAKE_C_FLAGS " -Werror")
+    string(APPEND CMAKE_CXX_FLAGS " -Wno-error")
+    string(APPEND CMAKE_C_FLAGS " -Wno-error")
   endif()
   check_cxx_compiler_flag(-Wunused-but-set-variable HAS_UNUSED_BUT_SET_VARIABLE)
   check_cxx_compiler_flag(-Wunused-parameter HAS_UNUSED_PARAMETER)

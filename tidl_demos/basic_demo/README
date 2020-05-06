@@ -1,0 +1,10 @@
+# ONNX Runtime Basic Demo
+
+## Building
+```sh
+# Prepare the environment with libs etc
+source ./setenv.sh
+
+# Build the demo
+make
+```

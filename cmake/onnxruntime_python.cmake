@@ -88,6 +88,7 @@ set(onnxruntime_pybind11_state_libs
     ${PROVIDERS_CUDA}
     ${PROVIDERS_MIGRAPHX}
     ${PROVIDERS_NUPHAR}
+    ${PROVIDERS_TIDL}
     ${PROVIDERS_VITISAI}
     ${PROVIDERS_NNAPI}
     ${PROVIDERS_RKNPU}

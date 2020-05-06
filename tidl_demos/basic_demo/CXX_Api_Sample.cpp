@@ -4,7 +4,9 @@
 
 #include <assert.h>
 #include <vector>
-#include <onnxruntime_cxx_api.h>
+#include <onnxruntime/core/session/onnxruntime_cxx_api.h>
+#include <onnxruntime/core/providers/tidl/tidl_provider_factory.h>
+#include <onnxruntime/core/providers/dnnl/dnnl_provider_factory.h>
 
 int main(int argc, char* argv[]) {
   //*************************************************************************
@@ -19,7 +21,8 @@ int main(int argc, char* argv[]) {
   // If onnxruntime.dll is built with CUDA enabled, we can uncomment out this line to use CUDA for this
   // session (we also need to include cuda_provider_factory.h above which defines it)
   // #include "cuda_provider_factory.h"
-  // OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 1);
+  // OrtSessionOptionsAppendExecutionProvider_Dnnl(session_options, 1);
+  OrtSessionOptionsAppendExecutionProvider_Tidl(session_options, 1);
 
   // Sets graph optimization level
   // Available levels are
@@ -36,7 +39,9 @@ int main(int argc, char* argv[]) {
 #ifdef _WIN32
   const wchar_t* model_path = L"squeezenet.onnx";
 #else
-  const char* model_path = "squeezenet.onnx";
+  const char* model_path = "../../csharp/testdata/squeezenet.onnx";
+  // const char* model_path = "../onnxruntime/python/tools/quantization/E2E_example_model/resnet50_v1.onnx";
+  // const char* model_path = "../build/Linux/RelWithDebInfo/2-layer-nested-subgraph-test.onnx";
 #endif
 
   printf("Using Onnxruntime C++ API\n");
