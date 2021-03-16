@@ -64,7 +64,7 @@ class TidlExecutionProvider : public IExecutionProvider {
                          std::vector<NodeComputeInfo>& node_compute_funcs) override;
 
  private:
-  std::unordered_map<std::string, ONNX_NAMESPACE::ModelProto*> model_protos_;
+  std::unordered_map<std::string, std::string*> model_protos_;
   tidl_ops * tidl_ops_ = new tidl_ops;
   int32_t is_import_;
   

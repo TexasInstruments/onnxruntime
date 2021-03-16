@@ -66,7 +66,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
     tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
     tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
-  }
+ }
   else
   {
     tidl_ops_->lib = dlopen("libtidl_onnxrt_EP.so.1.0", RTLD_NOW | RTLD_GLOBAL);
@@ -100,8 +100,29 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   // This method is based on that of TRT EP
   // Construct modelproto from graph
   //OnnxTIDLSubGraphParams *state_subGraph = (OnnxTIDLSubGraphParams*)malloc(sizeof(OnnxTIDLSubGraphParams));
-  onnxruntime::Model model(graph.Name(), true, ModelMetaData(), PathString(), IOnnxRuntimeOpSchemaRegistryList(),
-                           graph.DomainToVersionMap(), std::vector<ONNX_NAMESPACE::FunctionProto>(), *GetLogger());
+   // Dump model Proto to file to pass it to pyxir
+  auto logger = *GetLogger();
+
+  const Graph& node_graph = graph.GetGraph();
+  const std::string& name_ = node_graph.Name();
+  onnxruntime::Model model{name_, true, ModelMetaData{}, PathString{},
+                           IOnnxRuntimeOpSchemaRegistryList{},
+                           node_graph.DomainToVersionMap(),
+                           std::vector<ONNX_NAMESPACE::FunctionProto>(),
+                           logger};
+
+  ONNX_NAMESPACE::ModelProto model_proto = model.ToProto();
+  model_proto.set_ir_version(ONNX_NAMESPACE::Version::IR_VERSION);
+
+  *(model_proto.mutable_graph()) = node_graph.ToGraphProto();
+
+  GraphProto onnxGraph = model_proto.graph();
+  
+  std::string string_buf;
+  string_buf = model_proto.SerializeAsString();
+
+  const auto supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodes(string_buf);
+
   onnxruntime::Graph& graph_build = model.MainGraph();
   const std::vector<NodeIndex>& node_index = graph.GetNodesInTopologicalOrder();
   std::set<NodeArg*> all_node_inputs;
@@ -126,10 +147,6 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   }
 
   ORT_ENFORCE(graph_build.Resolve().IsOK());
-  ONNX_NAMESPACE::ModelProto model_proto = model.ToProto();
-  model_proto.set_ir_version(ONNX_NAMESPACE::Version::IR_VERSION);
-
-  const auto supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodes(model_proto);
 
   std::unique_ptr<IndexedSubGraph> sub_graph = onnxruntime::make_unique<IndexedSubGraph>();
 
@@ -251,14 +268,14 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 }
 
 void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context, onnxRtParams_t * onnxRtParams, GraphProto& onnxGraph, 
-                          tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
+                          tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph, std::string * string_buf)
 {
   int32_t i, currInIdx = 0; 
   
   // populate input params  
   for (i = 0; i < onnxGraph.input_size(); i++) 
   {
-    if (tidl_ops->TIDL_isInputConst(onnxGraph, onnxGraph.input(i).name())) 
+    if (tidl_ops->TIDL_isInputConst(string_buf, onnxGraph.input(i).name())) 
     {
       continue;
     }
@@ -362,16 +379,20 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
     *(model_proto->mutable_graph()) = graph_body.ToGraphProto();
     model_proto->set_ir_version(ONNX_NAMESPACE::Version::IR_VERSION);
 
-    model_protos_.emplace(fused_node->Name(), model_proto);
+    std::string * string_buf = new std::string();
+    *string_buf = model_proto->SerializeAsString();
+
+
+    model_protos_.emplace(fused_node->Name(), string_buf);
 
     NodeComputeInfo compute_info;
     
     compute_info.create_state_func = [&](ComputeContext* context, FunctionState* state) 
     {
       OnnxTIDLSubGraphParams *state_subGraph = (OnnxTIDLSubGraphParams*)malloc(sizeof(OnnxTIDLSubGraphParams));
-      ModelProto* model_proto = model_protos_[context->node_name];
-      
-      tidl_ops_->TIDL_createStateFunc(state_subGraph, model_proto, context->node_name);
+      std::string * string_buf = model_protos_[context->node_name];
+
+      tidl_ops_->TIDL_createStateFunc(state_subGraph, string_buf, context->node_name);
 
       *state = state_subGraph;
 
@@ -389,17 +410,20 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
       Ort::CustomOpApi ort{*api};
       onnxRtParams_t onnxRtParams;
-      ModelProto* model_proto = reinterpret_cast<ModelProto*>(state_subGraph->modelProto_);
-      GraphProto onnxGraph = model_proto->graph();
+      std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
+      ModelProto model_proto;
+      model_proto.ParseFromString(*string_buf);
+
+      GraphProto onnxGraph = model_proto.graph();
       
-      populateOnnxRtInputParams(ort, context, &onnxRtParams, onnxGraph, tidl_ops_, state_subGraph);
+      populateOnnxRtInputParams(ort, context, &onnxRtParams, onnxGraph, tidl_ops_, state_subGraph, string_buf);
       if(is_import_)
       {
-        tidl_ops_->TIDL_computeImportFunc(state_subGraph, &onnxRtParams);
+        tidl_ops_->TIDL_computeImportFunc(state_subGraph, &onnxRtParams, string_buf);
       }
 
       populateOnnxRtOutputParams(ort, context, &onnxRtParams, onnxGraph, tidl_ops_, state_subGraph);
-      tidl_ops_->TIDL_computeInvokeFunc(state_subGraph, &onnxRtParams);
+      tidl_ops_->TIDL_computeInvokeFunc(state_subGraph, &onnxRtParams, string_buf);
       //TODO: Need to create destructor to do subgraph_rt_delete for infer, and also delete other params
 
       return Status::OK();
