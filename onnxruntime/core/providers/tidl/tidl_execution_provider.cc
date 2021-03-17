@@ -436,6 +436,23 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
       return Status::OK();
 
     };
+ 
+    compute_info.custom_func = [&](FunctionState state , char **node_name, void **node_data) 
+    {
+      OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
+
+      std::vector<uint64_t> *v = new std::vector<uint64_t>();
+
+      v->push_back(uint64_t(state_subGraph->stats->cpIn_time_start));
+      v->push_back(uint64_t(state_subGraph->stats->cpIn_time_end));
+      v->push_back(uint64_t(state_subGraph->stats->proc_time_start));
+      v->push_back(uint64_t(state_subGraph->stats->proc_time_end));
+      v->push_back(uint64_t(state_subGraph->stats->cpOut_time_start));
+      v->push_back(uint64_t(state_subGraph->stats->cpOut_time_end));
+      *node_data = static_cast<void *>(v);
+      *node_name = const_cast<char *>(state_subGraph->subGraphName_);
+      return (Status::OK());
+    };
 
     node_compute_funcs.push_back(compute_info);
   };

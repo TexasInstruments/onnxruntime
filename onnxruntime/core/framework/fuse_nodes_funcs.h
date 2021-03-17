@@ -33,6 +33,7 @@ class FuncManager {
   const std::string kComputeFuncSymbol = "Compute_";
   const std::string kCreateStateFuncSymbol = "Create_State_";
   const std::string kReleaseStateFuncSymbol = "Release_State_";
+  const std::string kGetCustomDataFuncSymbol = "Custom_State_";
 
   // note that subgraph session state shares fused_funcs with main graph
   // because it's filled in by the time main graph is traversed,

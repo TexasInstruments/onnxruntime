@@ -57,6 +57,7 @@
 #endif
 #ifdef USE_TIDL  
 #include "core/providers/tidl/tidl_execution_provider.h"
+#include "core/framework/func_kernel.h"
 #endif
 using namespace ONNX_NAMESPACE;
 using namespace onnxruntime::experimental;
@@ -1603,26 +1604,7 @@ Status InferenceSession::Run(const RunOptions& run_options,
                                                  session_options_.execution_mode, run_options.terminate, run_logger,
                                                  run_options.only_execute_path_to_fetches));
   }
-  ORT_CATCH(const std::exception& e) {
-    ORT_HANDLE_EXCEPTION([&]() {
-      retval = Status(common::ONNXRUNTIME, common::FAIL, e.what());
-    });
-  }
   ORT_CATCH(...) {
-    
-    using milli = std::chrono::milliseconds;
-    auto start = std::chrono::high_resolution_clock::now();
-    // execute the graph
-    ORT_CHECK_AND_SET_RETVAL(utils::ExecuteGraph(*session_state_, feeds_fetches_manager, feeds, *p_fetches,
-                                                 session_options_.execution_mode, run_options.terminate, run_logger));
-    auto finish = std::chrono::high_resolution_clock::now();
-    std::cout << "utils::ExecuteGraph took "
-              << std::chrono::duration_cast<milli>(finish - start).count()
-              << " milliseconds\n";
-
-  } catch (const std::exception& e) {
-    retval = Status(common::ONNXRUNTIME, common::FAIL, e.what());
-  } catch (...) {
     retval = Status(common::ONNXRUNTIME, common::RUNTIME_EXCEPTION, "Encountered unknown exception in Run()");
   }
 
@@ -2008,8 +1990,29 @@ std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark
   res.push_back(std::make_pair<std::string, uint64_t>("ddr:read_end", uint64_t(run_end_ddr_read)));
   res.push_back(std::make_pair<std::string, uint64_t>("ddr:write_start", uint64_t(run_start_ddr_write)));
   res.push_back(std::make_pair<std::string, uint64_t>("ddr:write_end", uint64_t(run_end_ddr_write)));
-  //c_data = primary_subgraph().get_custom_data("perf_stats");
-#if 0
+  char *node_name;
+  void *node_data;
+  const SequentialExecutionPlan& seq_exec_plan = *session_state_->GetExecutionPlan();
+  const auto& exec_plan_vec = seq_exec_plan.execution_plan;
+  const auto& graph_viewer= session_state_->GetGraphViewer();
+  Status status;
+
+    for (const auto& node_exec_plan : exec_plan_vec) 
+    {
+      auto node_index = node_exec_plan.node_index;
+      const auto& node = graph_viewer.GetNode(node_index);
+      if(node->OpType() == "TIDL_0")
+      {
+        auto p_op_kernel = session_state_->GetKernel(node_index);
+        const FunctionKernel * fun_op_kernel =  reinterpret_cast<const FunctionKernel*>(p_op_kernel);
+        status = fun_op_kernel->Custom(&node_name, &node_data);
+        if(status.IsOK())
+        {
+          c_data.push_back(std::make_pair(std::string(node_name), node_data));
+        }
+      }
+    }
+
   if(c_data.size()) {
       for (auto e : c_data) {
           std::string prefix = "ts:subgraph_" + e.first + "_";
@@ -2025,7 +2028,6 @@ std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark
           delete s;
       }
   }
-#endif
   return res;
 }
 

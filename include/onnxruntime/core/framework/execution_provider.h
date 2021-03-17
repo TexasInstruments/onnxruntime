@@ -39,11 +39,13 @@ using MemoryInfoSet = std::set<OrtMemoryInfo>;
 using CreateFunctionStateFunc = std::function<int(ComputeContext*, FunctionState*)>;
 using ComputeFunc = std::function<Status(FunctionState, const OrtApi*, OrtKernelContext*)>;
 using DestroyFunctionStateFunc = std::function<void(FunctionState)>;
+using GetCustomData = std::function<Status(FunctionState, char **node_name, void **node_data)>;
 
 struct NodeComputeInfo {
   CreateFunctionStateFunc create_state_func;
   ComputeFunc compute_func;
   DestroyFunctionStateFunc release_state_func;
+  GetCustomData custom_func;
 };
 
 class IExecutionProvider {

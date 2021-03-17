@@ -43,6 +43,11 @@ Status FuncManager::GetFuncs(const std::string& name, NodeComputeInfo*& compute_
     ORT_RETURN_IF_ERROR(Env::Default().GetSymbolFromLibrary(handle,
                                                             kReleaseStateFuncSymbol + name,
                                                             &release_func_symbol_handle));
+    void* custom_func_symbol_handle = nullptr;
+    ORT_RETURN_IF_ERROR(Env::Default().GetSymbolFromLibrary(handle,
+                                                            kGetCustomDataFuncSymbol + name,
+                                                            &custom_func_symbol_handle));
+
     it->second.compute_info.compute_func = [=](FunctionState state, const OrtApi* api, OrtKernelContext* context) {
       return reinterpret_cast<ComputeFuncC>(compute_func_symbol_handle)(state, api, context);
     };
@@ -54,6 +59,12 @@ Status FuncManager::GetFuncs(const std::string& name, NodeComputeInfo*& compute_
     it->second.compute_info.release_state_func = [=](FunctionState state) {
       return reinterpret_cast<DestroyFunctionStateC>(release_func_symbol_handle)(state);
     };
+
+    it->second.compute_info.custom_func = [=](FunctionState state, char **node_name, void **node_data) {
+      return reinterpret_cast<CustomFuncC>(custom_func_symbol_handle)(state, node_name, node_data);
+    };
+
+
   }
 
   compute_info = &it->second.compute_info;

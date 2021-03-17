@@ -1785,6 +1785,16 @@ including arg name, arg type (contains both type and shape).)pbdoc")
              }
              return rfetch;
            })
+      
+      .def("get_TI_benchmark_data", [](PyInferenceSession* sess) -> py::dict {
+        std::vector<std::pair<std::string, uint64_t>> res =  sess->GetSessionHandle()->get_TI_benchmark_data();
+        py::dict benchmark_dict;
+        for (auto e : res)
+        {
+            benchmark_dict[e.first.c_str()] = e.second;
+        }
+        return benchmark_dict;
+      })
       .def("end_profiling", [](PyInferenceSession* sess) -> std::string {
         return sess->GetSessionHandle()->EndProfiling();
       })
@@ -1829,14 +1839,6 @@ including arg name, arg type (contains both type and shape).)pbdoc")
           status = sess->GetSessionHandle()->Run(*run_options, *io_binding.Get());
         if (!status.IsOK())
           throw std::runtime_error("Error in execution: " + status.ErrorMessage());
-      .def("get_TI_benchmark_data", [](InferenceSession* sess) -> py::dict {
-        std::vector<std::pair<std::string, uint64_t>> res =  sess->get_TI_benchmark_data();
-        py::dict benchmark_dict;
-        for (auto e : res)
-        {
-            benchmark_dict[e.first.c_str()] = e.second;
-        }
-        return benchmark_dict;
       });
 
   py::enum_<onnxruntime::ArenaExtendStrategy>(m, "ArenaExtendStrategy", py::arithmetic())

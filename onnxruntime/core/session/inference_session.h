@@ -667,6 +667,9 @@ class InferenceSession {
   std::vector<uint8_t> ort_format_model_bytes_;
 
   std::shared_ptr<onnxruntime::AllocatorManager> allocator_manager_;
+  uint64_t run_start_ts, run_start_ddr_read, run_start_ddr_write;
+  uint64_t run_end_ts, run_end_ddr_read, run_end_ddr_write;
+
 };
 
 struct SessionIOBinding {
@@ -679,10 +682,6 @@ struct SessionIOBinding {
  private:
   InferenceSession* sess_;
   std::unique_ptr<IOBinding> binding_;
-  bool model_loaded_ = false;
-
-  uint64_t run_start_ts, run_start_ddr_read, run_start_ddr_write;
-  uint64_t run_end_ts, run_end_ddr_read, run_end_ddr_write;
 };
 
 }  // namespace onnxruntime

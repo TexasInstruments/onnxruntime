@@ -196,7 +196,10 @@ class Session:
                 return self._sess.run(output_names, input_feed, run_options)
             else:
                 raise
-
+    
+    def get_TI_benchmark_data(self):
+        return self._sess.get_TI_benchmark_data()
+      
     def end_profiling(self):
         """
         End profiling and return results in a file.
@@ -338,6 +341,7 @@ class InferenceSession(Session):
         self._sess = None
         self._sess_options = self._sess_options_initial
         self._create_inference_session(providers, provider_options)
+    
 
 
 class IOBinding:
@@ -523,5 +527,3 @@ class OrtValue:
         '''
         return self._ortvalue.numpy()
     
-    def get_TI_benchmark_data(self):
-        return self._sess.get_TI_benchmark_data()

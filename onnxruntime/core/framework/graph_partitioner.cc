@@ -249,6 +249,10 @@ static Status PartitionOnnxFormatModelImpl(Graph& graph, bool export_dll, FuncMa
         }
 
         for (size_t j = 0, end = nodes_to_compile.size(); j < end; j++) {
+          if(nodes_to_compile[j]->OpType() != "TIDL_0")
+          {
+            node_compute_funcs[j].custom_func = NULL;
+          }
           ORT_RETURN_IF_ERROR(func_mgr.AddFuncInfo(nodes_to_compile[j]->Name(), std::move(node_compute_funcs[j])));
         }
       }
