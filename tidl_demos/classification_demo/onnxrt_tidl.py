@@ -13,11 +13,11 @@ parser.add_argument('-d','--disable_offload', action='store_true',  help='Disabl
 args = parser.parse_args()
 #os.environ["TIDL_RT_PERFSTATS"] = "1"
 
-TIDL_BASE_PATH = '../../../tidl/c7x-mma-tidl/'
+TIDL_BASE_PATH = '/home/a0393754/work/onnxrt_7.3_rel/c7x-mma-tidl'
 image_path = '../img/mushroom.png'
 #image_path = '../../../tidl/c7x-mma-tidl/ti_dl/test/testvecs/input/airshow.jpg'
 model_path = '../../csharp/testdata/squeezenet.onnx'
-lables = '../../../tidl/c7x-mma-tidl/ti_dl/test/testvecs/input/labels.txt'
+lables = '/home/a0393754/work/onnxrt_7.3_rel/c7x-mma-tidl/ti_dl/test/testvecs/input/labels.txt'
 
 
 so = rt.SessionOptions()

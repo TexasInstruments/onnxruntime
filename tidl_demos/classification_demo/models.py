@@ -20,7 +20,7 @@ power_of_2_quantization = 'no'
 enable_high_resolution_optimization = 'no'
 pre_batchnorm_fold = 1
 
-tidl_tools_path = '../../../tidl/c7x-mma-tidl/tidl_tools/'
+tidl_tools_path = '/home/a0393754/work/onnxrt_7.3_rel/c7x-mma-tidl/tidl_tools/'
 
 artifacts_folder = '../../../onnxrt-artifacts/'
 
@@ -46,7 +46,7 @@ optional_options = {
 }
 
 #lables = '../testvecs/input/labels.txt'
-lables = '../../../tidl/c7x-mma-tidl/ti_dl/test/testvecs/input/labels.txt'
+lables = '/home/a0393754/work/onnxrt_7.3_rel/c7x-mma-tidl/ti_dl/test/testvecs/input/labels.txt'
 models_base_path = '../../../..//onnx_models'
 
 def load_labels(filename):
