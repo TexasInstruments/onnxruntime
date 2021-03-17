@@ -66,7 +66,8 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
     tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
     tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
- }
+    tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
+  }
   else
   {
     tidl_ops_->lib = dlopen("libtidl_onnxrt_EP.so.1.0", RTLD_NOW | RTLD_GLOBAL);
@@ -83,6 +84,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
     tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
     tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
+    tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
   }
   bool status = false;
   status = tidl_ops_->TIDL_populateOptions(interface_options, numOptions);
@@ -93,6 +95,11 @@ TidlExecutionProvider::~TidlExecutionProvider() {
   //TODO : Add delete here
 }
 
+
+int32_t TidlExecutionProvider::GetCustomMemStats(uint64_t * read, uint64_t * write) const {
+
+  return (tidl_ops_->TIDLEP_getDdrStats(read, write));
+}
 
 std::vector<std::unique_ptr<ComputeCapability>>
 TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,

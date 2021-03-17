@@ -396,6 +396,11 @@ class InferenceSession {
     *Get InferenceSession logger.
     */
   const logging::Logger* GetLogger() const { return session_logger_; };
+  
+  /** 
+   * Get subgraph level data for TIDL 
+   */
+  std::vector<std::pair<std::string, uint64_t>> get_TI_benchmark_data();
 
  protected:
 #if !defined(ORT_MINIMAL_BUILD)
@@ -674,6 +679,10 @@ struct SessionIOBinding {
  private:
   InferenceSession* sess_;
   std::unique_ptr<IOBinding> binding_;
+  bool model_loaded_ = false;
+
+  uint64_t run_start_ts, run_start_ddr_read, run_start_ddr_write;
+  uint64_t run_end_ts, run_end_ddr_read, run_end_ddr_write;
 };
 
 }  // namespace onnxruntime

@@ -55,13 +55,23 @@
 #include "core/framework/customregistry.h"
 #include "core/session/custom_ops.h"
 #endif
-
+#ifdef USE_TIDL  
+#include "core/providers/tidl/tidl_execution_provider.h"
+#endif
 using namespace ONNX_NAMESPACE;
 using namespace onnxruntime::experimental;
 using namespace onnxruntime::common;
 
 namespace onnxruntime {
 namespace {
+
+static inline void get_time_u64(uint64_t *t)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    *t = (uint64_t)ts.tv_sec * (uint64_t)1000000000ull + (uint64_t)ts.tv_nsec;
+}
+
 template <typename T>
 const T* GetDateFormatString();
 
@@ -1506,6 +1516,19 @@ Status InferenceSession::Run(const RunOptions& run_options,
   if (session_profiler_.IsEnabled()) {
     tp = session_profiler_.StartTime();
   }
+  // For TIDL
+  auto tidl_ep = execution_providers_.Get(kTidlExecutionProvider);
+  if(tidl_ep)
+  {
+    const TidlExecutionProvider* tidl_ep_ = reinterpret_cast<const TidlExecutionProvider*>(tidl_ep);
+    tidl_ep_->GetCustomMemStats(&run_start_ddr_read, &run_start_ddr_write);
+  }
+  else
+  {
+    run_start_ddr_read = 0; run_start_ddr_write = 0;
+  }
+
+  get_time_u64(&run_start_ts);
 
 #ifdef ONNXRUNTIME_ENABLE_INSTRUMENT
   TraceLoggingActivity<telemetry_provider_handle> ortrun_activity;
@@ -1586,6 +1609,20 @@ Status InferenceSession::Run(const RunOptions& run_options,
     });
   }
   ORT_CATCH(...) {
+    
+    using milli = std::chrono::milliseconds;
+    auto start = std::chrono::high_resolution_clock::now();
+    // execute the graph
+    ORT_CHECK_AND_SET_RETVAL(utils::ExecuteGraph(*session_state_, feeds_fetches_manager, feeds, *p_fetches,
+                                                 session_options_.execution_mode, run_options.terminate, run_logger));
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::cout << "utils::ExecuteGraph took "
+              << std::chrono::duration_cast<milli>(finish - start).count()
+              << " milliseconds\n";
+
+  } catch (const std::exception& e) {
+    retval = Status(common::ONNXRUNTIME, common::FAIL, e.what());
+  } catch (...) {
     retval = Status(common::ONNXRUNTIME, common::RUNTIME_EXCEPTION, "Encountered unknown exception in Run()");
   }
 
@@ -1622,6 +1659,19 @@ Status InferenceSession::Run(const RunOptions& run_options,
 #ifdef ONNXRUNTIME_ENABLE_INSTRUMENT
   TraceLoggingWriteStop(ortrun_activity, "OrtRun");
 #endif
+  
+  get_time_u64(&run_end_ts);
+  
+  if(tidl_ep)
+  {
+    const TidlExecutionProvider* tidl_ep_ = reinterpret_cast<const TidlExecutionProvider*>(tidl_ep);
+    tidl_ep_->GetCustomMemStats(&run_end_ddr_read, &run_end_ddr_write);
+  }
+  else
+  {
+    run_end_ddr_read = 0; run_end_ddr_write = 0;
+  }
+
   return retval;
 }
 
@@ -1945,6 +1995,38 @@ InferenceSession* SessionIOBinding::GetInferenceSession() {
 
 IOBinding* SessionIOBinding::Get() {
   return binding_.get();
+}
+std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark_data(){
+  std::vector<std::pair<std::string, uint64_t>> res;
+  std::vector<std::pair<std::string, void *>> c_data;
+
+  /* get the run duration */
+  res.push_back(std::make_pair<std::string, uint64_t>("ts:run_start", uint64_t(run_start_ts)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ts:run_end", uint64_t(run_end_ts)));
+  /* get the ddr bw numbers */
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:read_start", uint64_t(run_start_ddr_read)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:read_end", uint64_t(run_end_ddr_read)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:write_start", uint64_t(run_start_ddr_write)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:write_end", uint64_t(run_end_ddr_write)));
+  //c_data = primary_subgraph().get_custom_data("perf_stats");
+#if 0
+  if(c_data.size()) {
+      for (auto e : c_data) {
+          std::string prefix = "ts:subgraph_" + e.first + "_";
+          std::string annots[] = {
+              "copy_in_start", "copy_in_end",
+              "proc_start", "proc_end",
+              "copy_out_start", "copy_out_end"
+          };
+          std::vector<uint64_t> *s = static_cast<std::vector<uint64_t>*>(e.second);
+          int index = 0;
+          for(auto it = s->begin(); it != s->end(); it++, index++)
+              res.push_back(std::make_pair<std::string, uint64_t>(prefix + annots[index], uint64_t(*it)));
+          delete s;
+      }
+  }
+#endif
+  return res;
 }
 
 }  // namespace onnxruntime

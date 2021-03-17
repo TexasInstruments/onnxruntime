@@ -41,6 +41,7 @@ typedef  struct
     decltype(&::TIDL_computeInvokeFunc) TIDL_computeInvokeFunc;
     decltype(&::TIDL_isInputConst) TIDL_isInputConst;
     decltype(&::TIDL_getOutputShape) TIDL_getOutputShape;
+    decltype(&::TIDLEP_getDdrStats) TIDLEP_getDdrStats;
 } tidl_ops;
 
 // Information needed to construct TIDL execution providers.
@@ -62,6 +63,8 @@ class TidlExecutionProvider : public IExecutionProvider {
                 const std::vector<const KernelRegistry*>& /*kernel_registries*/) const override;
   common::Status Compile(const std::vector<onnxruntime::Node*>& fused_nodes,
                          std::vector<NodeComputeInfo>& node_compute_funcs) override;
+  
+  int32_t GetCustomMemStats(uint64_t * read, uint64_t * write) const; 
 
  private:
   std::unordered_map<std::string, std::string*> model_protos_;

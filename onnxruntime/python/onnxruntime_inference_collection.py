@@ -522,3 +522,6 @@ class OrtValue:
         Valid only for OrtValues holding Tensors. Throws for OrtValues holding non-Tensors.
         '''
         return self._ortvalue.numpy()
+    
+    def get_TI_benchmark_data(self):
+        return self._sess.get_TI_benchmark_data()

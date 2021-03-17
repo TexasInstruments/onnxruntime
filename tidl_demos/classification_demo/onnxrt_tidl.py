@@ -26,6 +26,7 @@ print("Available execution providers : ", rt.get_available_providers())
 print("Platform - ", platform.python_implementation())
 #so.log_severity_level = 0
 #so.log_verbosity_level = 4
+#so.enable_profiling = True
 
 delegate_options = {}
 delegate_options.update(required_options)
@@ -56,8 +57,14 @@ def infer_image(sess, image_file, config):
   start_time = time.time()
   #interpreter invoke call
   output = sess.run(None, {input_name: input_data})[0]
+  #prof_file = sess.end_profiling()
+  #print(prof_file)
   stop_time = time.time()
   infer_time = stop_time - start_time
+
+  benchmark_dict = sess.get_TI_benchmark_data()
+  print(benchmark_dict['ts:run_end'] - benchmark_dict['ts:run_start'])
+  print(benchmark_dict)
 
   #outputs = [interpreter.get_tensor(output_detail['index']) for output_detail in output_details]
   return img, output, infer_time, 0
