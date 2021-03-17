@@ -17,23 +17,25 @@
 namespace onnxruntime {
 
 constexpr const char* TIDL = "Tidl";
+constexpr const char* TIDL_CPU = "TidlCpu";
 
 
 TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& info)
     : IExecutionProvider{onnxruntime::kTidlExecutionProvider} {
-  AllocatorCreationInfo device_info(
+  AllocatorCreationInfo default_memory_info{
       [](int) {
         return onnxruntime::make_unique<CPUAllocator>(OrtMemoryInfo(TIDL, OrtAllocatorType::OrtDeviceAllocator));
-      });
-  AllocatorCreationInfo cpu_memory_info(
+      },
+      0};
+
+   AllocatorCreationInfo cpu_memory_info{
       [](int) {
         return onnxruntime::make_unique<CPUAllocator>(
-            OrtMemoryInfo(TIDL, OrtAllocatorType::OrtDeviceAllocator, OrtDevice(), 0, OrtMemTypeCPUOutput));
-      });
+            OrtMemoryInfo(TIDL_CPU, OrtAllocatorType::OrtDeviceAllocator, OrtDevice(), 0, OrtMemTypeCPUOutput));
+      }};
 
-  InsertAllocator(CreateAllocator(device_info));
-  InsertAllocator(CreateAllocator(cpu_memory_info));
-  
+  InsertAllocator(CreateAllocator(default_memory_info));
+  InsertAllocator(CreateAllocator(cpu_memory_info));  
   int32_t numOptions = info.options_tidl_onnx_vec.size();
   std::vector<std::string> interface_options(numOptions); 
   interface_options = info.options_tidl_onnx_vec;
@@ -316,7 +318,7 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
     onnxRtParams->inputTensorData[currInIdx] = (void *)input; 
     onnxRtParams->inputTensorElementType[currInIdx] = inTensorElementType;
 
-    printf(" input input_tensor name -  %s \n", onnxGraph.node(i).input(0).c_str());
+    //printf(" input input_tensor name -  %s \n", onnxGraph.node(i).input(0).c_str());
     strcpy((char *)onnxRtParams->inDataNames[currInIdx],  (char*)onnxGraph.node(i).input(0).c_str());
 
     onnxRtParams->tensorShape[currInIdx][3] = tensor_shape[3];
