@@ -36,20 +36,20 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
 
   InsertAllocator(CreateAllocator(default_memory_info));
   InsertAllocator(CreateAllocator(cpu_memory_info));  
-  int32_t numOptions = info.options_tidl_onnx_vec.size();
-  std::vector<std::string> interface_options(numOptions); 
-  interface_options = info.options_tidl_onnx_vec;
+  TIDLProviderOptions interface_options = info.options_tidl_onnx_vec;
   
-  for(int i = 0; i < numOptions; i= i+2)
+  for(auto option : interface_options)
   {
-    if (!strcmp("import", interface_options[i].c_str())) 
+    auto key = option.first;
+    auto value = option.second;
+    if (!strcmp("import", key.c_str()))
     {
       std::map<std::string, int> valid_import_vals {{"yes", 1}, {"no", 0}};
-      if(valid_import_vals.find(interface_options[i+1].c_str()) == valid_import_vals.end()) 
+      if(valid_import_vals.find(value.c_str()) == valid_import_vals.end())
       {
           printf("ERROR : unsupported import value \n");
       }
-      is_import_ = valid_import_vals[interface_options[i+1]];
+      is_import_ = valid_import_vals[value];
     }
   }
 
@@ -89,7 +89,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
   }
   bool status = false;
-  status = tidl_ops_->TIDL_populateOptions(interface_options, numOptions);
+  status = tidl_ops_->TIDL_populateOptions(interface_options);
   // TODO : how to pass error if status is false?
 }
 

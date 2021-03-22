@@ -28,6 +28,7 @@
 //NCI, NCO, PRED_CIRC, DWS_CONV_STRIDE
 #define DEFAULT_COMPILE_CONSTRAINT_NC_FLAGS (0x1 | 0x40 | 0x200 | 0x400)
 
+using TIDLProviderOptions = std::vector<std::pair<std::string,std::string>>;
 
 namespace onnxruntime {
 
@@ -46,9 +47,9 @@ typedef  struct
 
 // Information needed to construct TIDL execution providers.
 struct TidlExecutionProviderInfo {
-  std::vector<std::string> options_tidl_onnx_vec;
+  TIDLProviderOptions options_tidl_onnx_vec;
 
-  explicit TidlExecutionProviderInfo(std::vector<std::string> in_options_tidl_onnx_vec)
+  explicit TidlExecutionProviderInfo(const TIDLProviderOptions& in_options_tidl_onnx_vec)
       : options_tidl_onnx_vec(in_options_tidl_onnx_vec) {}
   TidlExecutionProviderInfo() = default;
 };

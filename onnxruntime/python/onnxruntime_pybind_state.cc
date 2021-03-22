@@ -169,10 +169,9 @@ onnxruntime::ArenaExtendStrategy arena_extend_strategy = onnxruntime::ArenaExten
 #ifdef USE_MIGRAPHX
 #include "core/providers/migraphx/migraphx_provider_factory.h"
 #endif
-
 #ifdef USE_TIDL
+using TIDLProviderOptions = std::vector<std::pair<std::string,std::string>>;
 #include "core/providers/tidl/tidl_provider_factory.h"
-std::vector<std::string> options_tidl_onnx_vec;
 #endif
 
 #ifdef USE_OPENVINO
@@ -208,7 +207,7 @@ namespace onnxruntime {
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tensorrt(const OrtTensorRTProviderOptions* params);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_MIGraphX(int device_id);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Dnnl(int use_arena);
-std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(std::vector<std::string> options_tidl_onnx_vec);
+std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(const TIDLProviderOptions& options);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_OpenVINO(const OrtOpenVINOProviderOptions* params);
 #ifdef USE_OPENVINO
 const ProviderInfo_OpenVINO* GetProviderInfo_OpenVINO();
@@ -562,7 +561,14 @@ static void RegisterExecutionProviders(InferenceSession* sess, const std::vector
     } 
     else if (type == kTidlExecutionProvider) {
 #ifdef USE_TIDL
-      RegisterExecutionProvider(sess, *onnxruntime::CreateExecutionProviderFactory_Tidl(options_tidl_onnx_vec));
+      const auto it = provider_options_map.find(type);
+      TIDLProviderOptions tidl_options;
+      if(it != provider_options_map.end()) {
+        auto i_options = it->second;
+        for (auto elem = i_options.begin(); elem != i_options.end(); elem++)
+          tidl_options.push_back(std::make_pair(elem->first, elem->second));
+      }
+      RegisterExecutionProvider(sess, *onnxruntime::CreateExecutionProviderFactory_Tidl(tidl_options));
 #endif
     }
     else if (type == kOpenVINOExecutionProvider) {
@@ -819,23 +825,6 @@ void addGlobalMethods(py::module& m, Environment& env) {
         return openvino_device_type;
       },
       "Gets the dynamically selected OpenVINO device type for inference.");
-#endif
-
-#ifdef USE_TIDL  
-  m.def("set_TIDLOnnxDelegate_options", [](py::dict options_tidl_onnx_dict) {
-    for (std::pair<py::handle, py::handle> item : options_tidl_onnx_dict)
-    {
-      std::stringstream key, value;
-      key << item.first;
-      value << item.second;
-      auto option_name = key.str();
-      auto option_value = value.str();
-      //std::cout << option_name << " : " << option_value << std::endl;
-      // Add condition to check even number of values in options_tidl_onnx_vec and number < 100
-      options_tidl_onnx_vec.push_back(option_name);
-      options_tidl_onnx_vec.push_back(option_value);
-    }
-  });
 #endif
 
 #ifdef onnxruntime_PYBIND_EXPORT_OPSCHEMA

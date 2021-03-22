@@ -101,16 +101,13 @@ def run_model(model, mIdx, log_file):
         if numFrames > delegate_options['tidl_calibration_options:num_frames_calibration']:
             numFrames = delegate_options['tidl_calibration_options:num_frames_calibration']
     
-    #pass options to pybind
-    rt.capi._pybind_state.set_TIDLOnnxDelegate_options(delegate_options)
-
     ############   set interpreter  ################################
     if args.disable_offload : 
         EP_list = ['CPUExecutionProvider']
         sess = rt.InferenceSession(config['model_path'] , providers=EP_list,sess_options=so)
     else:
         EP_list = ['TIDLExecutionProvider','CPUExecutionProvider']
-        sess = rt.InferenceSession(config['model_path'] ,providers=EP_list, sess_options=so)
+        sess = rt.InferenceSession(config['model_path'] ,providers=EP_list, provider_options=[delegate_options, {}], sess_options=so)
     ################################################################
     
     # run session
