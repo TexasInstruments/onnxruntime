@@ -275,25 +275,20 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   }
   return result;
 }
-
-void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context, onnxRtParams_t * onnxRtParams, GraphProto& onnxGraph, 
-                          tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph, std::string * string_buf)
+void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context, onnxRtParams_t * onnxRtParams, 
+                          tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
 {
   int32_t i, currInIdx = 0; 
-  
+
   // populate input params  
-  for (i = 0; i < onnxGraph.input_size(); i++) 
-  {
-    if (tidl_ops->TIDL_isInputConst(string_buf, onnxGraph.input(i).name())) 
-    {
-      continue;
-    }
-    const OrtValue* input_tensor = ort.KernelContext_GetInput(context, i);
+  for (i = 0; i < state_subGraph->numInputs; i++) 
+  {    
+    const OrtValue* input_tensor = ort.KernelContext_GetInput(context, state_subGraph->inputIdx[i]);
     OrtTensorTypeAndShapeInfo* input_tensor_info = ort.GetTensorTypeAndShape(input_tensor);
     int64_t inTensorElementType = ort.GetTensorElementType(input_tensor_info);
     const auto& tensor_shape = ort.GetTensorShape(input_tensor_info);
     ort.ReleaseTensorTypeAndShapeInfo(input_tensor_info);
-    
+
     void * input;
     if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
     {
@@ -317,26 +312,21 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
     }
     onnxRtParams->inputTensorData[currInIdx] = (void *)input; 
     onnxRtParams->inputTensorElementType[currInIdx] = inTensorElementType;
-
-    //printf(" input input_tensor name -  %s \n", onnxGraph.node(i).input(0).c_str());
-    strcpy((char *)onnxRtParams->inDataNames[currInIdx],  (char*)onnxGraph.node(i).input(0).c_str());
-
     onnxRtParams->tensorShape[currInIdx][3] = tensor_shape[3];
     onnxRtParams->tensorShape[currInIdx][2] = tensor_shape[2];
     onnxRtParams->tensorShape[currInIdx][1] = tensor_shape[1];
     onnxRtParams->tensorShape[currInIdx][0] = tensor_shape[0];
-
     currInIdx++;
   }
-  onnxRtParams->numNetInData = currInIdx;
-  onnxRtParams->numNetOutData = 1;
+  onnxRtParams->numNetInData = state_subGraph->numInputs;
+  onnxRtParams->numNetOutData = state_subGraph->numOutputs;
 }
 
-void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context, onnxRtParams_t * onnxRtParams, GraphProto& onnxGraph, 
+void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context, onnxRtParams_t * onnxRtParams,  
                           tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
 {
   //populate output params
-  for (int j = 0; j < onnxGraph.output_size(); j++) 
+  for (int j = 0; j < onnxRtParams->numNetOutData; j++) 
   {
     std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(&state_subGraph->ioBuffDesc, j);
     auto* output_tensor = ort.KernelContext_GetOutput(context, j, nchw_shape.data(), nchw_shape.size());
@@ -416,24 +406,19 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
 
     compute_info.compute_func = [&](FunctionState state, const OrtCustomOpApi* api, OrtKernelContext* context) 
     {
+
       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
       Ort::CustomOpApi ort{*api};
       onnxRtParams_t onnxRtParams;
-      std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
-      ModelProto model_proto;
-      model_proto.ParseFromString(*string_buf);
 
-      GraphProto onnxGraph = model_proto.graph();
-      
-      populateOnnxRtInputParams(ort, context, &onnxRtParams, onnxGraph, tidl_ops_, state_subGraph, string_buf);
+      populateOnnxRtInputParams(ort, context, &onnxRtParams, tidl_ops_, state_subGraph);
       if(is_import_)
       {
+        std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
         tidl_ops_->TIDL_computeImportFunc(state_subGraph, &onnxRtParams, string_buf);
       }
-
-      populateOnnxRtOutputParams(ort, context, &onnxRtParams, onnxGraph, tidl_ops_, state_subGraph);
-      tidl_ops_->TIDL_computeInvokeFunc(state_subGraph, &onnxRtParams, string_buf);
-      //TODO: Need to create destructor to do subgraph_rt_delete for infer, and also delete other params
+      populateOnnxRtOutputParams(ort, context, &onnxRtParams, tidl_ops_, state_subGraph);
+      tidl_ops_->TIDL_computeInvokeFunc(state_subGraph, &onnxRtParams);
 
       return Status::OK();
 
