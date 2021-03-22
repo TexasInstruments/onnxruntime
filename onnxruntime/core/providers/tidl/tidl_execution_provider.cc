@@ -38,20 +38,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   InsertAllocator(CreateAllocator(cpu_memory_info));  
   TIDLProviderOptions interface_options = info.options_tidl_onnx_vec;
   
-  for(auto option : interface_options)
-  {
-    auto key = option.first;
-    auto value = option.second;
-    if (!strcmp("import", key.c_str()))
-    {
-      std::map<std::string, int> valid_import_vals {{"yes", 1}, {"no", 0}};
-      if(valid_import_vals.find(value.c_str()) == valid_import_vals.end())
-      {
-          printf("ERROR : unsupported import value \n");
-      }
-      is_import_ = valid_import_vals[value];
-    }
-  }
+  is_import_ = (info.type == "TIDLCompilationProvider");
 
   if(is_import_)
   {

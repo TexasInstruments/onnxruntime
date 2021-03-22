@@ -105,6 +105,9 @@ def run_model(model, mIdx, log_file):
     if args.disable_offload : 
         EP_list = ['CPUExecutionProvider']
         sess = rt.InferenceSession(config['model_path'] , providers=EP_list,sess_options=so)
+    elif args.compile:
+        EP_list = ['TIDLCompilationProvider','CPUExecutionProvider']
+        sess = rt.InferenceSession(config['model_path'] ,providers=EP_list, provider_options=[delegate_options, {}], sess_options=so)
     else:
         EP_list = ['TIDLExecutionProvider','CPUExecutionProvider']
         sess = rt.InferenceSession(config['model_path'] ,providers=EP_list, provider_options=[delegate_options, {}], sess_options=so)

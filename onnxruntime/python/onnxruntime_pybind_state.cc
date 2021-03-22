@@ -207,7 +207,7 @@ namespace onnxruntime {
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tensorrt(const OrtTensorRTProviderOptions* params);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_MIGraphX(int device_id);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Dnnl(int use_arena);
-std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(const TIDLProviderOptions& options);
+std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(const std::string& provider_type, const TIDLProviderOptions& options);
 std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_OpenVINO(const OrtOpenVINOProviderOptions* params);
 #ifdef USE_OPENVINO
 const ProviderInfo_OpenVINO* GetProviderInfo_OpenVINO();
@@ -559,7 +559,7 @@ static void RegisterExecutionProviders(InferenceSession* sess, const std::vector
           sess, *onnxruntime::CreateExecutionProviderFactory_Dnnl(sess->GetSessionOptions().enable_cpu_mem_arena));
 #endif
     } 
-    else if (type == kTidlExecutionProvider) {
+    else if (type == kTidlExecutionProvider || type == kTidlCompilationProvider) {
 #ifdef USE_TIDL
       const auto it = provider_options_map.find(type);
       TIDLProviderOptions tidl_options;
@@ -568,7 +568,7 @@ static void RegisterExecutionProviders(InferenceSession* sess, const std::vector
         for (auto elem = i_options.begin(); elem != i_options.end(); elem++)
           tidl_options.push_back(std::make_pair(elem->first, elem->second));
       }
-      RegisterExecutionProvider(sess, *onnxruntime::CreateExecutionProviderFactory_Tidl(tidl_options));
+      RegisterExecutionProvider(sess, *onnxruntime::CreateExecutionProviderFactory_Tidl(type, tidl_options));
 #endif
     }
     else if (type == kOpenVINOExecutionProvider) {

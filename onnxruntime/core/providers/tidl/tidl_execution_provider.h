@@ -48,9 +48,10 @@ typedef  struct
 // Information needed to construct TIDL execution providers.
 struct TidlExecutionProviderInfo {
   TIDLProviderOptions options_tidl_onnx_vec;
+  std::string type;
 
-  explicit TidlExecutionProviderInfo(const TIDLProviderOptions& in_options_tidl_onnx_vec)
-      : options_tidl_onnx_vec(in_options_tidl_onnx_vec) {}
+  explicit TidlExecutionProviderInfo(const std::string& type, const TIDLProviderOptions& in_options_tidl_onnx_vec)
+      : options_tidl_onnx_vec(in_options_tidl_onnx_vec), type(type) {}
   TidlExecutionProviderInfo() = default;
 };
 

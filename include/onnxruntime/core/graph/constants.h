@@ -38,4 +38,5 @@ constexpr const char* kRocmExecutionProvider = "ROCMExecutionProvider";
 constexpr const char* kCoreMLExecutionProvider = "CoreMLExecutionProvider";
 
 constexpr const char* kTidlExecutionProvider = "TIDLExecutionProvider";
+constexpr const char* kTidlCompilationProvider = "TIDLCompilationProvider";
 }  // namespace onnxruntime

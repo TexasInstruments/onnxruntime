@@ -74,6 +74,14 @@ constexpr ProviderInfo kProvidersInPriorityOrder[] =
 #endif
         },
         {
+            kTidlCompilationProvider,
+#ifdef USE_TIDL
+            true,
+#else
+            false,
+#endif
+        },
+        {
             kNupharExecutionProvider,
 #ifdef USE_NUPHAR
             true,
