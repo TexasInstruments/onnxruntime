@@ -117,7 +117,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   std::string string_buf;
   string_buf = model_proto.SerializeAsString();
 
-  const auto supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodes(string_buf);
+  const auto supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodes(string_buf, node_graph.DomainToVersionMap().at(kOnnxDomain));
 
   onnxruntime::Graph& graph_build = model.MainGraph();
   const std::vector<NodeIndex>& node_index = graph.GetNodesInTopologicalOrder();
