@@ -402,7 +402,7 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
       if(is_import_)
       {
         std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
-        tidl_ops_->TIDL_computeImportFunc(state_subGraph, &onnxRtParams, string_buf);
+        tidl_ops_->TIDL_computeImportFunc(state_subGraph, &onnxRtParams, string_buf, graph_body.DomainToVersionMap().at(kOnnxDomain));
       }
       populateOnnxRtOutputParams(ort, context, &onnxRtParams, tidl_ops_, state_subGraph);
       tidl_ops_->TIDL_computeInvokeFunc(state_subGraph, &onnxRtParams);
