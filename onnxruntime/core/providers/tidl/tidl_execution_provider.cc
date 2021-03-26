@@ -42,7 +42,14 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
 
   if(is_import_)
   {
-    tidl_ops_->lib = dlopen("libtidl_model_import_onnx.so", RTLD_NOW | RTLD_GLOBAL);
+    std::string tidl_tools_path;
+    for (auto _ : options_tidl_onnx_vec) {
+      auto key = _.first;
+      auto value = _.second;
+      if(key == "tidl_tools_path")
+        tidl_tools_path = value;
+    }
+    tidl_ops_->lib = dlopen((tidl_tools_path + "/libtidl_model_import_onnx.so").c_str(), RTLD_NOW | RTLD_GLOBAL);
     if(! tidl_ops_->lib)
     {
       printf("Error -   %s \n", dlerror());
@@ -59,7 +66,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   }
   else
   {
-    tidl_ops_->lib = dlopen("libtidl_onnxrt_EP.so.1.0", RTLD_NOW | RTLD_GLOBAL);
+    tidl_ops_->lib = dlopen("libtidl_onnxrt_EP.so", RTLD_NOW | RTLD_GLOBAL);
     if(! tidl_ops_->lib)
     {
       printf("Error -   %s \n", dlerror());
