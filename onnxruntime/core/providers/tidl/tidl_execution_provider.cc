@@ -43,7 +43,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   if(is_import_)
   {
     std::string tidl_tools_path;
-    for (auto _ : options_tidl_onnx_vec) {
+    for (auto _ : info.options_tidl_onnx_vec) {
       auto key = _.first;
       auto value = _.second;
       if(key == "tidl_tools_path")
