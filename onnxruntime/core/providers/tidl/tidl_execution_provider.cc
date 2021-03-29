@@ -42,7 +42,14 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
 
   if(is_import_)
   {
-    tidl_ops_->lib = dlopen("libtidl_model_import_onnx.so", RTLD_NOW | RTLD_GLOBAL);
+    std::string tidl_tools_path;
+    for (auto _ : options_tidl_onnx_vec) {
+      auto key = _.first;
+      auto value = _.second;
+      if(key == "tidl_tools_path")
+        tidl_tools_path = value;
+    }
+    tidl_ops_->lib = dlopen((tidl_tools_path + "/libtidl_model_import_onnx.so").c_str(), RTLD_NOW | RTLD_GLOBAL);
     if(! tidl_ops_->lib)
     {
       printf("Error -   %s \n", dlerror());
@@ -59,7 +66,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   }
   else
   {
-    tidl_ops_->lib = dlopen("libtidl_onnxrt_EP.so.1.0", RTLD_NOW | RTLD_GLOBAL);
+    tidl_ops_->lib = dlopen("libtidl_onnxrt_EP.so", RTLD_NOW | RTLD_GLOBAL);
     if(! tidl_ops_->lib)
     {
       printf("Error -   %s \n", dlerror());
@@ -93,6 +100,27 @@ int32_t TidlExecutionProvider::GetCustomMemStats(uint64_t * read, uint64_t * wri
 std::vector<std::unique_ptr<ComputeCapability>>
 TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
                                       const std::vector<const KernelRegistry*>& /*kernel_registries*/) const {
+   // check if all nodes have shape for Input
+#if 0
+  for (const auto& node : graph.Nodes()) 
+  {
+    for(auto& def : node.InputDefs())
+    {
+      const auto& tensorShape = def->Shape();
+      if( tensorShape )
+      {
+        for (int i = 0; i < tensorShape->dim_size(); i++)
+        {
+          printf(" Shape %d of %s is %lld \n", i, node.Name().c_str(), tensorShape->dim(i).dim_value());
+        }
+      }
+      else
+      {
+        printf(" Shape not foud for %s\n", node.Name().c_str());
+      }
+    }
+  }
+#endif
   // This method is based on that of TRT EP
   // Construct modelproto from graph
   //OnnxTIDLSubGraphParams *state_subGraph = (OnnxTIDLSubGraphParams*)malloc(sizeof(OnnxTIDLSubGraphParams));
@@ -262,11 +290,11 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   }
   return result;
 }
-void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context, onnxRtParams_t * onnxRtParams, 
+void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context, 
                           tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
 {
   int32_t i, currInIdx = 0; 
-
+  onnxRtParams_t * onnxRtParams = &state_subGraph->onnxRtParams;
   // populate input params  
   for (i = 0; i < state_subGraph->numInputs; i++) 
   {    
@@ -297,6 +325,7 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
     {
       printf("ERROR : Unsupported input_tensor element type %d \n", inTensorElementType);
     }
+
     onnxRtParams->inputTensorData[currInIdx] = (void *)input; 
     onnxRtParams->inputTensorElementType[currInIdx] = inTensorElementType;
     onnxRtParams->tensorShape[currInIdx][3] = tensor_shape[3];
@@ -309,17 +338,19 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
   onnxRtParams->numNetOutData = state_subGraph->numOutputs;
 }
 
-void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context, onnxRtParams_t * onnxRtParams,  
-                          tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
+void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context, tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
 {
+  onnxRtParams_t * onnxRtParams = &state_subGraph->onnxRtParams;
   //populate output params
   for (int j = 0; j < onnxRtParams->numNetOutData; j++) 
   {
-    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(&state_subGraph->ioBuffDesc, j);
+    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(&state_subGraph->ioBuffDesc, onnxRtParams->outDataNames[j]);
     auto* output_tensor = ort.KernelContext_GetOutput(context, j, nchw_shape.data(), nchw_shape.size());
     OrtTensorTypeAndShapeInfo* output_info = ort.GetTensorTypeAndShape(output_tensor);
     int64_t outTensorElementType = ort.GetTensorElementType(output_info);
     ort.ReleaseTensorTypeAndShapeInfo(output_info);
+
+    //printf("outdata %d ==  %s   ioDesc name --  %s\n", j, (char *)onnxRtParams->outDataNames[j], (char *)state_subGraph->ioBuffDesc.outDataName[j]);
     //printf("Invoke : outTensorElementType = %d, numchOut = %d, outHeight = %d, outWidth = %d \n", outTensorElementType, ioBufDescPtr->outNumChannels[j], ioBufDescPtr->outHeight[j], ioBufDescPtr->outWidth[j]);
     
     void * output;
@@ -393,19 +424,17 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
 
     compute_info.compute_func = [&](FunctionState state, const OrtCustomOpApi* api, OrtKernelContext* context) 
     {
-
       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
       Ort::CustomOpApi ort{*api};
-      onnxRtParams_t onnxRtParams;
 
-      populateOnnxRtInputParams(ort, context, &onnxRtParams, tidl_ops_, state_subGraph);
+      populateOnnxRtInputParams(ort, context, tidl_ops_, state_subGraph);
       if(is_import_)
       {
         std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
-        tidl_ops_->TIDL_computeImportFunc(state_subGraph, &onnxRtParams, string_buf, graph_body.DomainToVersionMap().at(kOnnxDomain));
+        tidl_ops_->TIDL_computeImportFunc(state_subGraph, string_buf, graph_body.DomainToVersionMap().at(kOnnxDomain));
       }
-      populateOnnxRtOutputParams(ort, context, &onnxRtParams, tidl_ops_, state_subGraph);
-      tidl_ops_->TIDL_computeInvokeFunc(state_subGraph, &onnxRtParams);
+      populateOnnxRtOutputParams(ort, context, tidl_ops_, state_subGraph);
+      tidl_ops_->TIDL_computeInvokeFunc(state_subGraph);
 
       return Status::OK();
 
