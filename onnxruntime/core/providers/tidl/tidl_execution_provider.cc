@@ -51,7 +51,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
       if(key == "tidl_tools_path")
         tidl_tools_path = value;
     }
-    tidl_ops_->lib = dlopen((tidl_tools_path + "/libtidl_model_import_onnx.so").c_str(), RTLD_NOW | RTLD_GLOBAL);
+    tidl_ops_->lib = dlopen((tidl_tools_path + "/tidl_model_import_onnx.so").c_str(), RTLD_NOW | RTLD_GLOBAL);
     if(! tidl_ops_->lib)
     {
       printf("Error -   %s \n", dlerror());
