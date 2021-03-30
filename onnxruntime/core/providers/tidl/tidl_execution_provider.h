@@ -1,4 +1,6 @@
-// Copyright 2019 JD.com Inc. JD AI
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 
 #pragma once
 
@@ -17,15 +19,13 @@
 #include "core/framework/execution_provider.h"
 #include "core/graph/onnx_protobuf.h"
 
-#include "tidl_onnxRtImport_EP.h"
-#include "onnxrt_EP.h"
+#include "tidl_execution_provider_common.h"
 
 
 #define TIDL_STRING_SIZE        ((int32_t) 512)
 #define TIDL_MAX_ALG_IN_BUFS    ((int32_t) 32)
 #define TIDL_MAX_ALG_OUT_BUFS   ((int32_t) 32)
-//#define MAX_FILE_PATH (512)
-//NCI, NCO, PRED_CIRC, DWS_CONV_STRIDE
+
 #define DEFAULT_COMPILE_CONSTRAINT_NC_FLAGS (0x1 | 0x40 | 0x200 | 0x400)
 
 using TIDLProviderOptions = std::vector<std::pair<std::string,std::string>>;
@@ -43,6 +43,7 @@ typedef  struct
     decltype(&::TIDL_isInputConst) TIDL_isInputConst;
     decltype(&::TIDL_getOutputShape) TIDL_getOutputShape;
     decltype(&::TIDLEP_getDdrStats) TIDLEP_getDdrStats;
+    decltype(&::TIDLEP_getSubGraphStats) TIDLEP_getSubGraphStats;
 } tidl_ops;
 
 // Information needed to construct TIDL execution providers.

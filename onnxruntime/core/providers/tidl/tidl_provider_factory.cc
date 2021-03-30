@@ -1,4 +1,6 @@
-// Copyright 2019 JD.com Inc. JD AI
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 
 #include "core/providers/tidl/tidl_provider_factory.h"
 #include "tidl_execution_provider.h"

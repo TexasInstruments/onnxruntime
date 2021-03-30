@@ -1,4 +1,6 @@
-// Copyright 2019 JD.com Inc. JD AI
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 
 #include "tidl_execution_provider.h"
 #include "core/framework/allocatormgr.h"
@@ -55,14 +57,6 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
       printf("Error -   %s \n", dlerror());
     }
     assert(tidl_ops_->lib);
-    tidl_ops_->TIDL_getSupportedNodes = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodes)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodes"));
-    tidl_ops_->TIDL_populateOptions = reinterpret_cast<decltype(tidl_ops_->TIDL_populateOptions)>(dlsym(tidl_ops_->lib, "TIDL_populateOptions"));
-    tidl_ops_->TIDL_createStateFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_createStateFunc)>(dlsym(tidl_ops_->lib, "TIDL_createStateFunc"));
-    tidl_ops_->TIDL_computeImportFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeImportFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeImportFunc"));
-    tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
-    tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
-    tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
-    tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
   }
   else
   {
@@ -73,15 +67,17 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     }
     printf("libtidl_onnxrt_EP loaded %p \n", tidl_ops_->lib);
     assert(tidl_ops_->lib);
+ }
+  tidl_ops_->TIDL_getSupportedNodes = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodes)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodes"));
+  tidl_ops_->TIDL_populateOptions = reinterpret_cast<decltype(tidl_ops_->TIDL_populateOptions)>(dlsym(tidl_ops_->lib, "TIDL_populateOptions"));
+  tidl_ops_->TIDL_createStateFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_createStateFunc)>(dlsym(tidl_ops_->lib, "TIDL_createStateFunc"));
+  tidl_ops_->TIDL_computeImportFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeImportFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeImportFunc"));
+  tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
+  tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
+  tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
+  tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
+  tidl_ops_->TIDLEP_getSubGraphStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getSubGraphStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getSubGraphStats"));
 
-    tidl_ops_->TIDL_getSupportedNodes = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodes)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodes"));
-    tidl_ops_->TIDL_populateOptions = reinterpret_cast<decltype(tidl_ops_->TIDL_populateOptions)>(dlsym(tidl_ops_->lib, "TIDL_populateOptions"));
-    tidl_ops_->TIDL_createStateFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_createStateFunc)>(dlsym(tidl_ops_->lib, "TIDL_createStateFunc"));
-    tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
-    tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
-    tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
-    tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
-  }
   bool status = false;
   status = tidl_ops_->TIDL_populateOptions(interface_options);
   // TODO : how to pass error if status is false?
@@ -140,7 +136,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   *(model_proto.mutable_graph()) = node_graph.ToGraphProto();
 
-  GraphProto onnxGraph = model_proto.graph();
+  onnx::GraphProto onnxGraph = model_proto.graph();
   
   std::string string_buf;
   string_buf = model_proto.SerializeAsString();
@@ -344,15 +340,11 @@ void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context
   //populate output params
   for (int j = 0; j < onnxRtParams->numNetOutData; j++) 
   {
-    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(&state_subGraph->ioBuffDesc, onnxRtParams->outDataNames[j]);
+    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(state_subGraph->ioBuffDesc, onnxRtParams->outDataNames[j]);
     auto* output_tensor = ort.KernelContext_GetOutput(context, j, nchw_shape.data(), nchw_shape.size());
     OrtTensorTypeAndShapeInfo* output_info = ort.GetTensorTypeAndShape(output_tensor);
     int64_t outTensorElementType = ort.GetTensorElementType(output_info);
-    ort.ReleaseTensorTypeAndShapeInfo(output_info);
-
-    //printf("outdata %d ==  %s   ioDesc name --  %s\n", j, (char *)onnxRtParams->outDataNames[j], (char *)state_subGraph->ioBuffDesc.outDataName[j]);
-    //printf("Invoke : outTensorElementType = %d, numchOut = %d, outHeight = %d, outWidth = %d \n", outTensorElementType, ioBufDescPtr->outNumChannels[j], ioBufDescPtr->outHeight[j], ioBufDescPtr->outWidth[j]);
-    
+    ort.ReleaseTensorTypeAndShapeInfo(output_info);   
     void * output;
     if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
     {
@@ -418,8 +410,10 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
 
     compute_info.release_state_func = [](FunctionState state) 
     {
-      free(state);
-      //ORT_UNUSED_PARAMETER(state);
+       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
+       free(state_subGraph->ioBuffDesc);
+       free(state);
+       //ORT_UNUSED_PARAMETER(state);
     };
 
     compute_info.compute_func = [&](FunctionState state, const OrtCustomOpApi* api, OrtKernelContext* context) 
@@ -444,16 +438,7 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
     {
       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
 
-      std::vector<uint64_t> *v = new std::vector<uint64_t>();
-
-      v->push_back(uint64_t(state_subGraph->stats->cpIn_time_start));
-      v->push_back(uint64_t(state_subGraph->stats->cpIn_time_end));
-      v->push_back(uint64_t(state_subGraph->stats->proc_time_start));
-      v->push_back(uint64_t(state_subGraph->stats->proc_time_end));
-      v->push_back(uint64_t(state_subGraph->stats->cpOut_time_start));
-      v->push_back(uint64_t(state_subGraph->stats->cpOut_time_end));
-      *node_data = static_cast<void *>(v);
-      *node_name = const_cast<char *>(state_subGraph->subGraphName_);
+      tidl_ops_->TIDLEP_getSubGraphStats(state_subGraph, node_name, node_data);
       return (Status::OK());
     };
 
