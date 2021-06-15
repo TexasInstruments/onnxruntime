@@ -36,11 +36,12 @@ typedef struct
   int32_t inputIdx[TIDL_MAX_ALG_IN_BUFS];
   int32_t numInputs;
   int32_t numOutputs;
-  void * ioBuffDesc;
   void * rtHandle;
   void * rtInList;
   void * rtOutList;
   void * stats;
+  void * netPtr;
+  void * ioBufDesc;
   onnxRtParams_t onnxRtParams;
 }OnnxTIDLSubGraphParams;
 
@@ -51,10 +52,12 @@ extern "C"
   void TIDL_createStateFunc(OnnxTIDLSubGraphParams * state_subgraph, std::string * string_buf, const std::string node_name);
   void TIDL_computeImportFunc(OnnxTIDLSubGraphParams * state_subGraph, std::string * string_buf, int32_t opSetVersion);
   void TIDL_computeInvokeFunc(OnnxTIDLSubGraphParams * state_subGraph);
+  void TIDL_releaseRtFunc(OnnxTIDLSubGraphParams * state_subGraph);
   int32_t TIDL_isInputConst(std::string * string_buf, const string name);
   std::vector<int64_t> TIDL_getOutputShape(void * ioBufDescVPtr, int8_t onnxName[]);
   int32_t TIDLEP_getDdrStats(uint64_t * read, uint64_t * write);
   int32_t TIDLEP_getSubGraphStats(OnnxTIDLSubGraphParams * state_subGraph, char **node_name, void **node_data);
+
 }
 
 

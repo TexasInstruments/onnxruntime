@@ -67,12 +67,13 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     }
     printf("libtidl_onnxrt_EP loaded %p \n", tidl_ops_->lib);
     assert(tidl_ops_->lib);
- }
+  }
   tidl_ops_->TIDL_getSupportedNodes = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodes)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodes"));
   tidl_ops_->TIDL_populateOptions = reinterpret_cast<decltype(tidl_ops_->TIDL_populateOptions)>(dlsym(tidl_ops_->lib, "TIDL_populateOptions"));
   tidl_ops_->TIDL_createStateFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_createStateFunc)>(dlsym(tidl_ops_->lib, "TIDL_createStateFunc"));
   tidl_ops_->TIDL_computeImportFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeImportFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeImportFunc"));
   tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
+  tidl_ops_->TIDL_releaseRtFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_releaseRtFunc)>(dlsym(tidl_ops_->lib, "TIDL_releaseRtFunc"));
   tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
   tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
   tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
@@ -340,7 +341,7 @@ void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context
   //populate output params
   for (int j = 0; j < onnxRtParams->numNetOutData; j++) 
   {
-    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(state_subGraph->ioBuffDesc, onnxRtParams->outDataNames[j]);
+    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(state_subGraph->ioBufDesc, onnxRtParams->outDataNames[j]);
     auto* output_tensor = ort.KernelContext_GetOutput(context, j, nchw_shape.data(), nchw_shape.size());
     OrtTensorTypeAndShapeInfo* output_info = ort.GetTensorTypeAndShape(output_tensor);
     int64_t outTensorElementType = ort.GetTensorElementType(output_info);
@@ -408,12 +409,11 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
       return 0;      
     };
 
-    compute_info.release_state_func = [](FunctionState state) 
+    compute_info.release_state_func = [&](FunctionState state) 
     {
        OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
-       free(state_subGraph->ioBuffDesc);
+       tidl_ops_->TIDL_releaseRtFunc(state_subGraph);
        free(state);
-       //ORT_UNUSED_PARAMETER(state);
     };
 
     compute_info.compute_func = [&](FunctionState state, const OrtCustomOpApi* api, OrtKernelContext* context) 
