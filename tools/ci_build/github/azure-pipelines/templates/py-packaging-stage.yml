@@ -677,7 +677,8 @@ stages:
           copyLogsOnly: false
           excludedPaths: '$(Build.BinariesDirectory)#$(Build.SourcesDirectory)\cmake#C:\program files (x86)'
           userProvideBuildInfo: auto
-        continueOnError: false     
+        continueOnError: false    
+        workingDirectory: '$(Build.BinariesDirectory)\RelWithDebInfo'
 
       - script: |
           rename *.whl *.zip
