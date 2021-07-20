@@ -601,7 +601,7 @@ stages:
             --enable_pybind
             --enable_onnx_tests
             ${{ parameters.build_py_parameters }}
-            --parallel --update --build
+            --parallel
             $(TelemetryOption)
           workingDirectory: '$(Build.BinariesDirectory)'
 
@@ -677,8 +677,8 @@ stages:
           copyLogsOnly: false
           excludedPaths: '$(Build.BinariesDirectory)#$(Build.SourcesDirectory)\cmake#C:\program files (x86)'
           userProvideBuildInfo: auto
-        continueOnError: false    
-        workingDirectory: '$(Build.BinariesDirectory)\RelWithDebInfo'
+          workingDirectory: '$(Build.BinariesDirectory)\RelWithDebInfo'
+        continueOnError: false
 
       - script: |
           rename *.whl *.zip
