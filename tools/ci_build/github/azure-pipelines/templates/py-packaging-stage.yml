@@ -882,7 +882,7 @@ stages:
         inputs:
           publishXML: true
           copyLogsOnly: false
-          excludedPaths:$(Build.BinariesDirectory)#$(Build.SourcesDirectory)\cmake#C:\program files (x86)          
+          excludedPaths: '$(Build.BinariesDirectory)#$(Build.SourcesDirectory)\cmake#C:\program files (x86)'
         continueOnError: false
 
       - script: |
