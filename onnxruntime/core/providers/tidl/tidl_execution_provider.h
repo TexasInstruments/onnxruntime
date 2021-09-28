@@ -41,7 +41,6 @@ typedef  struct
     decltype(&::TIDL_computeImportFunc) TIDL_computeImportFunc;
     decltype(&::TIDL_computeInvokeFunc) TIDL_computeInvokeFunc;
     decltype(&::TIDL_releaseRtFunc) TIDL_releaseRtFunc;
-    decltype(&::TIDL_isInputConst) TIDL_isInputConst;
     decltype(&::TIDL_getOutputShape) TIDL_getOutputShape;
     decltype(&::TIDLEP_getDdrStats) TIDLEP_getDdrStats;
     decltype(&::TIDLEP_getSubGraphStats) TIDLEP_getSubGraphStats;

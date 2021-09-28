@@ -74,7 +74,6 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   tidl_ops_->TIDL_computeImportFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeImportFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeImportFunc"));
   tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
   tidl_ops_->TIDL_releaseRtFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_releaseRtFunc)>(dlsym(tidl_ops_->lib, "TIDL_releaseRtFunc"));
-  tidl_ops_->TIDL_isInputConst = reinterpret_cast<decltype(tidl_ops_->TIDL_isInputConst)>(dlsym(tidl_ops_->lib, "TIDL_isInputConst"));
   tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
   tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
   tidl_ops_->TIDLEP_getSubGraphStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getSubGraphStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getSubGraphStats"));
@@ -341,7 +340,7 @@ void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context
   //populate output params
   for (int j = 0; j < onnxRtParams->numNetOutData; j++) 
   {
-    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(state_subGraph->ioBufDesc, onnxRtParams->outDataNames[j]);
+    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(state_subGraph->tidlRtParams.ioBufDesc, onnxRtParams->outDataNames[j]);
     auto* output_tensor = ort.KernelContext_GetOutput(context, j, nchw_shape.data(), nchw_shape.size());
     OrtTensorTypeAndShapeInfo* output_info = ort.GetTensorTypeAndShape(output_tensor);
     int64_t outTensorElementType = ort.GetTensorElementType(output_info);
