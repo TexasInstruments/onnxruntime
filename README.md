@@ -59,3 +59,12 @@ or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any addi
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+###################################################################################################################################################################################################################
+## Addicional changes for ARM crosscompilation
+
+Modify tools path inside tool.cmake. Example path below
+
+	SET(tools /home/alice/tools/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu)
+
+

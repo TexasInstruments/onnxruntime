@@ -55,7 +55,7 @@
 #include "core/framework/customregistry.h"
 #include "core/session/custom_ops.h"
 #endif
-#ifdef USE_TIDL  
+#ifdef USE_TIDL
 #include "core/providers/tidl/tidl_execution_provider.h"
 #include "core/framework/func_kernel.h"
 #endif
@@ -1641,9 +1641,9 @@ Status InferenceSession::Run(const RunOptions& run_options,
 #ifdef ONNXRUNTIME_ENABLE_INSTRUMENT
   TraceLoggingWriteStop(ortrun_activity, "OrtRun");
 #endif
-  
+
   get_time_u64(&run_end_ts);
-  
+
   if(tidl_ep)
   {
     const TidlExecutionProvider* tidl_ep_ = reinterpret_cast<const TidlExecutionProvider*>(tidl_ep);
@@ -1997,7 +1997,7 @@ std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark
   const auto& graph_viewer= session_state_->GetGraphViewer();
   Status status;
 
-    for (const auto& node_exec_plan : exec_plan_vec) 
+    for (const auto& node_exec_plan : exec_plan_vec)
     {
       auto node_index = node_exec_plan.node_index;
       const auto& node = graph_viewer.GetNode(node_index);

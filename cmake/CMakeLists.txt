@@ -1507,6 +1507,9 @@ endif() # if(onnxruntime_USE_WINML)
 
 if (onnxruntime_BUILD_SHARED_LIB)
   include(onnxruntime.cmake)
+  if (onnxruntime_USE_TIIE)
+    include(onnxruntime_plugin.cmake) 
+  endif()
 endif()
 
 if (onnxruntime_BUILD_JAVA)

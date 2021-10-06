@@ -196,10 +196,10 @@ class Session:
                 return self._sess.run(output_names, input_feed, run_options)
             else:
                 raise
-    
+
     def get_TI_benchmark_data(self):
         return self._sess.get_TI_benchmark_data()
-      
+
     def end_profiling(self):
         """
         End profiling and return results in a file.

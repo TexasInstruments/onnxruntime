@@ -32,7 +32,7 @@ using TIDLProviderOptions = std::vector<std::pair<std::string,std::string>>;
 
 namespace onnxruntime {
 
-typedef  struct 
+typedef  struct
 {
     void *lib;
     decltype(&::TIDL_getSupportedNodes) TIDL_getSupportedNodes;
@@ -66,13 +66,13 @@ class TidlExecutionProvider : public IExecutionProvider {
                 const std::vector<const KernelRegistry*>& /*kernel_registries*/) const override;
   common::Status Compile(const std::vector<onnxruntime::Node*>& fused_nodes,
                          std::vector<NodeComputeInfo>& node_compute_funcs) override;
-  
-  int32_t GetCustomMemStats(uint64_t * read, uint64_t * write) const; 
+
+  int32_t GetCustomMemStats(uint64_t * read, uint64_t * write) const;
 
  private:
   std::unordered_map<std::string, std::string*> model_protos_;
   tidl_ops * tidl_ops_ = new tidl_ops;
   int32_t is_import_;
-  
+
 };
 }  // namespace onnxruntime

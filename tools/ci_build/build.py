@@ -326,6 +326,10 @@ def parse_arguments():
     parser.add_argument(
         "--use_tidl", action='store_true', help="Build with TIDL.")
     parser.add_argument(
+        "--use_tiie", action='store_true', help="Build with TI Inference engine. It needs --ti_inference_engine_path arg.") # noqa
+    parser.add_argument(
+        "--ti_inference_engine_path", default="ti-inference-engine", help="Path to ti-inference-engine.")
+    parser.add_argument(
         "--dnnl_gpu_runtime", action='store', default='', type=str.lower,
         help="e.g. --dnnl_gpu_runtime ocl")
     parser.add_argument(
@@ -654,7 +658,9 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
         "-Donnxruntime_BUILD_JAVA=" + ("ON" if args.build_java else "OFF"),
         "-Donnxruntime_BUILD_NODEJS=" + ("ON" if args.build_nodejs else "OFF"),
         "-Donnxruntime_BUILD_SHARED_LIB=" + ("ON" if args.build_shared_lib else "OFF"),
-        "-Donnxruntime_USE_TIDL=" + ("ON" if args.use_tidl else "OFF"),
+        "-Donnxruntime_USE_TIDL=" + ("ON" if args.use_tidl or args.use_tiie else "OFF"),
+        "-Donnxruntime_USE_TIIE=" + ("ON" if args.use_tiie else "OFF"),
+        "-Donnxruntime_TIIE_HOME=" + (args.ti_inference_engine_path if args.use_tiie else ""),
         "-Donnxruntime_USE_DNNL=" + ("ON" if args.use_dnnl else "OFF"),
         "-Donnxruntime_DNNL_GPU_RUNTIME=" + (args.dnnl_gpu_runtime if args.use_dnnl else ""),
         "-Donnxruntime_DNNL_OPENCL_ROOT=" + (args.dnnl_opencl_root if args.use_dnnl else ""),
@@ -1464,7 +1470,7 @@ def run_nodejs_tests(nodejs_binding_dir):
 
 def build_python_wheel(
         source_dir, build_dir, configs, use_cuda, use_dnnl,
-        use_tensorrt, use_openvino, use_nuphar, use_tidl, use_vitisai, use_acl, use_armnn, use_dml,
+        use_tensorrt, use_openvino, use_nuphar, use_tidl, use_tiie, use_vitisai, use_acl, use_armnn, use_dml,
         wheel_name_suffix, enable_training, nightly_build=False, featurizers_build=False, use_ninja=False):
     for config in configs:
         cwd = get_config_build_dir(build_dir, config)
@@ -1503,7 +1509,7 @@ def build_python_wheel(
             args.append('--use_openvino')
         elif use_dnnl:
             args.append('--use_dnnl')
-        elif use_tidl:
+        elif use_tidl or use_tiie:
             args.append('--use_tidl')
         elif use_nuphar:
             args.append('--use_nuphar')
@@ -1966,7 +1972,8 @@ def main():
                 args.use_tensorrt,
                 args.use_openvino,
                 args.use_nuphar,
-                args.use_tidl, 
+                args.use_tidl,
+                args.use_tiie,
                 args.use_vitisai,
                 args.use_acl,
                 args.use_armnn,

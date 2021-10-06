@@ -31,10 +31,19 @@ endif(NOT NUMPY_INCLUDE_DIR)
 
 
 # ---[ Python + Numpy
-set(onnxruntime_pybind_srcs_pattern
-    "${ONNXRUNTIME_ROOT}/python/*.cc"
-    "${ONNXRUNTIME_ROOT}/python/*.h"
-)
+if (onnxruntime_USE_TIIE)
+  set(onnxruntime_pybind_srcs_pattern
+      "${ONNXRUNTIME_ROOT}/python/*.cc"
+      "${ONNXRUNTIME_ROOT}/python/*.h"
+      "${ONNXRUNTIME_ROOT}/remote/*.cc"
+      "${ONNXRUNTIME_ROOT}/remote/*.h"
+  )
+elseif()
+  set(onnxruntime_pybind_srcs_pattern
+      "${ONNXRUNTIME_ROOT}/python/*.cc"
+      "${ONNXRUNTIME_ROOT}/python/*.h"
+  )
+endif()
 
 if (onnxruntime_ENABLE_TRAINING)
   list(APPEND onnxruntime_pybind_srcs_pattern
@@ -46,6 +55,8 @@ endif()
 file(GLOB onnxruntime_pybind_srcs CONFIGURE_DEPENDS
   ${onnxruntime_pybind_srcs_pattern}
   )
+
+list(REMOVE_ITEM onnxruntime_pybind_srcs "${ONNXRUNTIME_ROOT}/remote/onnx_registry.cc")
 
 onnxruntime_add_shared_library_module(onnxruntime_pybind11_state ${onnxruntime_pybind_srcs})
 if(MSVC)
@@ -73,6 +84,8 @@ endif()
 if (onnxruntime_ENABLE_TRAINING)
   target_include_directories(onnxruntime_pybind11_state PRIVATE ${ORTTRAINING_ROOT})
 endif()
+
+target_include_directories(onnxruntime_pybind11_state PRIVATE ${onnxruntime_TIIE_HOME})
 
 if(APPLE)
   set(ONNXRUNTIME_SO_LINK_FLAG "-Xlinker -exported_symbols_list ${ONNXRUNTIME_ROOT}/python/exported_symbols.lst")
@@ -153,6 +166,8 @@ if (MSVC)
 else()
   set_target_properties(onnxruntime_pybind11_state PROPERTIES SUFFIX ".so")
 endif()
+target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-lstdc++fs")
+target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-L${onnxruntime_TIIE_HOME} -lti_inference_client")
 
 # Generate version_info.py in Windows build.
 # Has to be done before onnxruntime_python_srcs is set.

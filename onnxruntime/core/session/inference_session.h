@@ -396,9 +396,9 @@ class InferenceSession {
     *Get InferenceSession logger.
     */
   const logging::Logger* GetLogger() const { return session_logger_; };
-  
-  /** 
-   * Get subgraph level data for TIDL 
+
+  /**
+   * Get subgraph level data for TIDL
    */
   std::vector<std::pair<std::string, uint64_t>> get_TI_benchmark_data();
 

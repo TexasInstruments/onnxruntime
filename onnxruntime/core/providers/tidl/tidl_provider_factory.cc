@@ -35,7 +35,7 @@ std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(c
 
 ORT_API_STATUS_IMPL(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessionOptions* options, c_api_tidl_options * options_tidl_onnx) {
   TIDLProviderOptions options_tidl_onnx_vec;
-  
+
   options_tidl_onnx_vec.push_back(std::make_pair("import", std::string(options_tidl_onnx->import)));
   options_tidl_onnx_vec.push_back(std::make_pair("debug_level", std::to_string(options_tidl_onnx->debug_level)));
   options_tidl_onnx_vec.push_back(std::make_pair("tidl_tensor_bits", std::to_string(options_tidl_onnx->tidl_tensor_bits)));
