@@ -73,7 +73,14 @@ struct PyInferenceSession {
 
   InferenceSession* GetSessionHandle() const { return sess_.get(); }
 
+#ifdef USE_TIIE
+  virtual ~PyInferenceSession();
+
+  bool is_remote = true;
+  int32_t remote_id = 0xffffffff;
+#else
   virtual ~PyInferenceSession() {}
+#endif
 
  protected:
   PyInferenceSession(std::unique_ptr<InferenceSession> sess) {

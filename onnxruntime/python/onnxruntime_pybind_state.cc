@@ -715,12 +715,21 @@ static void RegisterCustomOpDomainsAndLibraries(PyInferenceSession* sess, const 
 }
 #endif
 
+#ifdef USE_TIIE
+void InitializeSession(PyInferenceSession* pysess, const std::vector<std::string>& provider_types,
+                       const ProviderOptionsVector& provider_options) {
+#else
 void InitializeSession(InferenceSession* sess, const std::vector<std::string>& provider_types,
                        const ProviderOptionsVector& provider_options) {
+#endif
   ProviderOptionsMap provider_options_map;
   GenerateProviderOptionsMap(provider_types, provider_options, provider_options_map);
+#ifdef USE_TIIE
+  InferenceSession *sess = pysess->GetSessionHandle();
+#endif
 
-#if defined(USE_TIDL)
+
+#ifdef USE_TIIE
   if (provider_types.empty()) {
     // use default registration priority.
     roundtrip(onnx_initialize_cpu_session, pysess->remote_id);
@@ -1863,7 +1872,11 @@ including arg name, arg type (contains both type and shape).)pbdoc")
           [](PyInferenceSession* sess,
              const std::vector<std::string>& provider_types = {},
              const ProviderOptionsVector& provider_options = {}) {
+#ifdef USE_TIIE
+            InitializeSession(sess, provider_types, provider_options);
+#else
             InitializeSession(sess->GetSessionHandle(), provider_types, provider_options);
+#endif
           },
           R"pbdoc(Load a model saved in ONNX or ORT format.)pbdoc")
       .def("run",

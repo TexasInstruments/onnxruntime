@@ -31,6 +31,7 @@ bool IsNumericNumpyArray(py::object& py_object);
 int OnnxRuntimeTensorToNumpyType(const DataTypeImpl* tensor_type);
 
 MLDataType NumpyTypeToOnnxRuntimeType(int numpy_type);
+MLDataType StringToOnnxRuntimeType(const std::string& string_type);
 
 using MemCpyFunc = void (*)(void*, const void*, size_t);
 void CpuToCpuMemCpy(void*, const void*, size_t);

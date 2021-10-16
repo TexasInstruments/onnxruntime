@@ -38,7 +38,7 @@ if (onnxruntime_USE_TIIE)
       "${ONNXRUNTIME_ROOT}/remote/*.cc"
       "${ONNXRUNTIME_ROOT}/remote/*.h"
   )
-elseif()
+else()
   set(onnxruntime_pybind_srcs_pattern
       "${ONNXRUNTIME_ROOT}/python/*.cc"
       "${ONNXRUNTIME_ROOT}/python/*.h"
