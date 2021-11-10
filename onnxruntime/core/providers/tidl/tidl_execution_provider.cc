@@ -321,13 +321,23 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
     {
       printf("ERROR : Unsupported input_tensor element type %d \n", inTensorElementType);
     }
+    
+    /** If input to the network has less than 4 dimensions, populate the lower index dimensions correctly
+     * and put dimension as 1 for the remaining higher indices */
+    int32_t inputNumDims = tensor_shape.size();
+
+    for(int i = 0; i < inputNumDims; i++)
+    {
+      onnxRtParams->tensorShape[currInIdx][4-inputNumDims + i] = tensor_shape[i];
+    }
+    for(int i = 0; i < (4 - inputNumDims); i++)
+    {
+      onnxRtParams->tensorShape[currInIdx][i] = 1;
+    }
 
     onnxRtParams->inputTensorData[currInIdx] = (void *)input; 
     onnxRtParams->inputTensorElementType[currInIdx] = inTensorElementType;
-    onnxRtParams->tensorShape[currInIdx][3] = tensor_shape[3];
-    onnxRtParams->tensorShape[currInIdx][2] = tensor_shape[2];
-    onnxRtParams->tensorShape[currInIdx][1] = tensor_shape[1];
-    onnxRtParams->tensorShape[currInIdx][0] = tensor_shape[0];
+
     currInIdx++;
   }
   onnxRtParams->numNetInData = state_subGraph->numInputs;
