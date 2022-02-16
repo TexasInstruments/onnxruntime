@@ -35,9 +35,11 @@ namespace onnxruntime {
 typedef  struct
 {
     void *lib;
-    decltype(&::TIDL_getSupportedNodes) TIDL_getSupportedNodes;
+    decltype(&::TIDL_getSupportedNodesImport) TIDL_getSupportedNodesImport;
+    decltype(&::TIDL_getSupportedNodesInfer) TIDL_getSupportedNodesInfer;
     decltype(&::TIDL_populateOptions) TIDL_populateOptions;
-    decltype(&::TIDL_createStateFunc) TIDL_createStateFunc;
+    decltype(&::TIDL_createStateImportFunc) TIDL_createStateImportFunc;
+    decltype(&::TIDL_createStateInferFunc) TIDL_createStateInferFunc;
     decltype(&::TIDL_computeImportFunc) TIDL_computeImportFunc;
     decltype(&::TIDL_computeInvokeFunc) TIDL_computeInvokeFunc;
     decltype(&::TIDL_releaseRtFunc) TIDL_releaseRtFunc;
@@ -73,6 +75,6 @@ class TidlExecutionProvider : public IExecutionProvider {
   std::unordered_map<std::string, std::string*> model_protos_;
   tidl_ops * tidl_ops_ = new tidl_ops;
   int32_t is_import_;
-
+  int32_t subgraph_serial_number_;
 };
 }  // namespace onnxruntime

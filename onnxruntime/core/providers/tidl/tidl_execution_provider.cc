@@ -68,9 +68,11 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     printf("libtidl_onnxrt_EP loaded %p \n", tidl_ops_->lib);
     assert(tidl_ops_->lib);
  }
-  tidl_ops_->TIDL_getSupportedNodes = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodes)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodes"));
+  tidl_ops_->TIDL_getSupportedNodesImport = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodesImport)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodesImport"));
+  tidl_ops_->TIDL_getSupportedNodesInfer = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodesInfer)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodesInfer"));
   tidl_ops_->TIDL_populateOptions = reinterpret_cast<decltype(tidl_ops_->TIDL_populateOptions)>(dlsym(tidl_ops_->lib, "TIDL_populateOptions"));
-  tidl_ops_->TIDL_createStateFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_createStateFunc)>(dlsym(tidl_ops_->lib, "TIDL_createStateFunc"));
+  tidl_ops_->TIDL_createStateImportFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_createStateImportFunc)>(dlsym(tidl_ops_->lib, "TIDL_createStateImportFunc"));
+  tidl_ops_->TIDL_createStateInferFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_createStateInferFunc)>(dlsym(tidl_ops_->lib, "TIDL_createStateInferFunc"));
   tidl_ops_->TIDL_computeImportFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeImportFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeImportFunc"));
   tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
   tidl_ops_->TIDL_releaseRtFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_releaseRtFunc)>(dlsym(tidl_ops_->lib, "TIDL_releaseRtFunc"));
@@ -140,8 +142,16 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   std::string string_buf;
   string_buf = model_proto.SerializeAsString();
-
-  const auto supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodes(string_buf, node_graph.DomainToVersionMap().at(kOnnxDomain));
+  
+  std::vector<std::vector<int>> supported_nodes_vector;
+  if(is_import_)
+  {
+    supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodesImport(string_buf, node_graph.DomainToVersionMap().at(kOnnxDomain));
+  }
+  else
+  {
+    supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodesInfer();
+  }
 
   onnxruntime::Graph& graph_build = model.MainGraph();
   const std::vector<NodeIndex>& node_index = graph.GetNodesInTopologicalOrder();
@@ -406,12 +416,25 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
 
     NodeComputeInfo compute_info;
 
+    subgraph_serial_number_ = 0;
+
     compute_info.create_state_func = [&](ComputeContext* context, FunctionState* state)
     {
       OnnxTIDLSubGraphParams *state_subGraph = (OnnxTIDLSubGraphParams*)malloc(sizeof(OnnxTIDLSubGraphParams));
-      std::string * string_buf = model_protos_[context->node_name];
 
-      tidl_ops_->TIDL_createStateFunc(state_subGraph, string_buf, context->node_name);
+      state_subGraph->serialNumber = subgraph_serial_number_;
+      
+      if(is_import_)
+      {
+        std::string * string_buf = model_protos_[context->node_name];
+        tidl_ops_->TIDL_createStateImportFunc(state_subGraph, string_buf, context->node_name);
+      }
+      else
+      {
+        tidl_ops_->TIDL_createStateInferFunc(state_subGraph, context->node_name);
+      }
+      
+      subgraph_serial_number_++;
 
       *state = state_subGraph;
 
