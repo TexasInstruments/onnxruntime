@@ -13,8 +13,11 @@ typedef struct
   int tidl_tensor_bits;
   char tidl_tools_path[512];
   char artifacts_folder[512];
+  int priority;
+  float max_pre_empt_delay;
 } c_api_tidl_options;
 
+ORT_API_STATUS(OrtSessionsOptionsSetDefault_Tidl, _In_ c_api_tidl_options * tidl_options);
 ORT_API_STATUS(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessionOptions* options, c_api_tidl_options * tidl_options);
 
 #ifdef __cplusplus
