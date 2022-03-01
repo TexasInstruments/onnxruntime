@@ -133,9 +133,6 @@ int main(int argc, char* argv[])
     c_api_tidl_options * options = (c_api_tidl_options *)malloc(sizeof(c_api_tidl_options));
     OrtSessionsOptionsSetDefault_Tidl(options);
     strcpy(options->import, "no");
-    options->debug_level = 0;
-    options->tidl_tensor_bits = 8;
-    strcpy(options->tidl_tools_path, "../../../tidl/c7x-mma-tidl/tidl_tools/");
     strcpy(options->artifacts_folder, "../../../onnxrt-artifacts/");
 
     if (tidl_flag)

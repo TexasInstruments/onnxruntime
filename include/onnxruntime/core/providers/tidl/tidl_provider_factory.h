@@ -8,10 +8,7 @@ extern "C" {
 
 typedef struct
 {
-  char import[512];
   int debug_level;
-  int tidl_tensor_bits;
-  char tidl_tools_path[512];
   char artifacts_folder[512];
   int priority;
   float max_pre_empt_delay;

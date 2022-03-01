@@ -39,19 +39,15 @@ ORT_API_STATUS_IMPL(OrtSessionsOptionsSetDefault_Tidl, _In_ c_api_tidl_options *
   options_tidl_onnx->debug_level = 0;
   options_tidl_onnx->priority = 0;
   options_tidl_onnx->max_pre_empt_delay = FLT_MAX;
-  printf("OrtSessionOptions: Set default params done\n");
   return nullptr;
 }
 
 ORT_API_STATUS_IMPL(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessionOptions* options, c_api_tidl_options * options_tidl_onnx) {
   TIDLProviderOptions options_tidl_onnx_vec;
 
-  options_tidl_onnx_vec.push_back(std::make_pair("import", std::string(options_tidl_onnx->import)));
   options_tidl_onnx_vec.push_back(std::make_pair("debug_level", std::to_string(options_tidl_onnx->debug_level)));
   options_tidl_onnx_vec.push_back(std::make_pair("priority", std::to_string(options_tidl_onnx->priority)));
   options_tidl_onnx_vec.push_back(std::make_pair("max_pre_empt_delay", std::to_string(options_tidl_onnx->max_pre_empt_delay)));
-  options_tidl_onnx_vec.push_back(std::make_pair("tidl_tensor_bits", std::to_string(options_tidl_onnx->tidl_tensor_bits)));
-  options_tidl_onnx_vec.push_back(std::make_pair("tidl_tools_path", std::string(options_tidl_onnx->tidl_tools_path)));
   options_tidl_onnx_vec.push_back(std::make_pair("artifacts_folder", std::string(options_tidl_onnx->artifacts_folder)));
 
   options->provider_factories.push_back(onnxruntime::CreateExecutionProviderFactory_Tidl("", options_tidl_onnx_vec));
