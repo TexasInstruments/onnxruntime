@@ -12,6 +12,8 @@ typedef struct
   char artifacts_folder[512];
   int priority;
   float max_pre_empt_delay;
+  /* C7x core number to be used for inference */
+  int core_number;
 } c_api_tidl_options;
 
 ORT_API_STATUS(OrtSessionsOptionsSetDefault_Tidl, _In_ c_api_tidl_options * tidl_options);

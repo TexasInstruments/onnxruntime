@@ -39,6 +39,7 @@ ORT_API_STATUS_IMPL(OrtSessionsOptionsSetDefault_Tidl, _In_ c_api_tidl_options *
   options_tidl_onnx->debug_level = 0;
   options_tidl_onnx->priority = 0;
   options_tidl_onnx->max_pre_empt_delay = FLT_MAX;
+  options_tidl_onnx->core_number = 1;
   return nullptr;
 }
 
@@ -49,6 +50,7 @@ ORT_API_STATUS_IMPL(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessi
   options_tidl_onnx_vec.push_back(std::make_pair("priority", std::to_string(options_tidl_onnx->priority)));
   options_tidl_onnx_vec.push_back(std::make_pair("max_pre_empt_delay", std::to_string(options_tidl_onnx->max_pre_empt_delay)));
   options_tidl_onnx_vec.push_back(std::make_pair("artifacts_folder", std::string(options_tidl_onnx->artifacts_folder)));
+  options_tidl_onnx_vec.push_back(std::make_pair("core_number", std::to_string(options_tidl_onnx->core_number)));
 
   options->provider_factories.push_back(onnxruntime::CreateExecutionProviderFactory_Tidl("", options_tidl_onnx_vec));
   return nullptr;
