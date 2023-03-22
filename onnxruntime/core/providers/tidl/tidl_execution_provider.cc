@@ -304,28 +304,64 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
   // populate input params
   for (i = 0; i < state_subGraph->numInputs; i++)
   {
-    const OrtValue* input_tensor = ort.KernelContext_GetInput(context, state_subGraph->inputIdx[i]);
+    auto* input_tensor = ort.KernelContext_GetInput(context, state_subGraph->inputIdx[i]);
     OrtTensorTypeAndShapeInfo* input_tensor_info = ort.GetTensorTypeAndShape(input_tensor);
     int64_t inTensorElementType = ort.GetTensorElementType(input_tensor_info);
     const auto& tensor_shape = ort.GetTensorShape(input_tensor_info);
     ort.ReleaseTensorTypeAndShapeInfo(input_tensor_info);
 
     void * input;
-    if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
+    if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
     {
-      input = const_cast<uint8_t*>(ort.GetTensorData<uint8_t>(input_tensor));
+      input = ort.GetTensorMutableData<float>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
+    {
+      input = ort.GetTensorMutableData<uint8_t>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8)
+    {
+      input = ort.GetTensorMutableData<int8_t>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16)
+    {
+      input = ort.GetTensorMutableData<uint16_t>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16)
+    {
+      input = ort.GetTensorMutableData<int16_t>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32)
+    {
+      input = ort.GetTensorMutableData<uint32_t>(const_cast<OrtValue*>(input_tensor));
     }
     else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
     {
-      input = const_cast<int32_t*>(ort.GetTensorData<int32_t>(input_tensor));
+      input = ort.GetTensorMutableData<int32_t>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64)
+    {
+      input = ort.GetTensorMutableData<uint64_t>(const_cast<OrtValue*>(input_tensor));
     }
     else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
     {
-      input = const_cast<int64_t*>(ort.GetTensorData<int64_t>(input_tensor));
+      input = ort.GetTensorMutableData<int64_t>(const_cast<OrtValue*>(input_tensor));
     }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
     {
-      input = const_cast<float*>(ort.GetTensorData<float>(input_tensor));
+      input = ort.GetTensorMutableData<uint16_t>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE)
+    {
+      input = ort.GetTensorMutableData<double>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING)
+    {
+      input = ort.GetTensorMutableData<std::string>(const_cast<OrtValue*>(input_tensor));
+    }
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL)
+    {
+      input = ort.GetTensorMutableData<bool>(const_cast<OrtValue*>(input_tensor));
     }
     else
     {
@@ -366,21 +402,57 @@ void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context
     int64_t outTensorElementType = ort.GetTensorElementType(output_info);
     ort.ReleaseTensorTypeAndShapeInfo(output_info);
     void * output;
-    if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
+    if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+    {
+      output = ort.GetTensorMutableData<float>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
     {
       output = ort.GetTensorMutableData<uint8_t>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8)
+    {
+      output = ort.GetTensorMutableData<int8_t>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16)
+    {
+      output = ort.GetTensorMutableData<uint16_t>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16)
+    {
+      output = ort.GetTensorMutableData<int16_t>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32)
+    {
+      output = ort.GetTensorMutableData<uint32_t>(output_tensor);
     }
     else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
     {
       output = ort.GetTensorMutableData<int32_t>(output_tensor);
     }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64)
+    {
+      output = ort.GetTensorMutableData<uint64_t>(output_tensor);
+    }
     else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
     {
       output = ort.GetTensorMutableData<int64_t>(output_tensor);
     }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
     {
-      output = ort.GetTensorMutableData<float>(output_tensor);
+      output = ort.GetTensorMutableData<uint16_t>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE)
+    {
+      output = ort.GetTensorMutableData<double>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING)
+    {
+      output = ort.GetTensorMutableData<std::string>(output_tensor);
+    }
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL)
+    {
+      output = ort.GetTensorMutableData<bool>(output_tensor);
     }
     else
     {
