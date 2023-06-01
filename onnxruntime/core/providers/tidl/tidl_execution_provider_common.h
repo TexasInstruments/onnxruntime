@@ -43,7 +43,7 @@ typedef struct
   int32_t serialNumber;
   int32_t currFrameIdx_; 
   void *subGraphPtr_;
-  char subGraphName_[100];
+  char subGraphName_[TIDL_MAX_ALG_OUT_BUFS * TIDL_STRING_SIZE];
   int32_t inputIdx[TIDL_MAX_ALG_IN_BUFS];
   int32_t numInputs;
   int32_t numOutputs;
