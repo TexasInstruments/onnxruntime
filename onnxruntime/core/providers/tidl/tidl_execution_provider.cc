@@ -12,6 +12,8 @@
 #include "math.h"
 
 #include <string>
+#include <iostream> //PC-- test
+#include <unordered_set> //PC --test
 
 
 //#define TIDL_IMPORT_ONNX
@@ -170,6 +172,8 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
     graph_build.AddNode(node.Name(), node.OpType(), node.Description(), inputs, outputs, &node.GetAttributes(), node.Domain());
   }
   const auto graph_outputs = graph.GetOutputs();
+  //PC-- added test
+  std::unordered_set<const NodeArg*> graph_outputs_set(graph_outputs.cbegin(), graph_outputs.cend());
   //Add initializer to graph
   const auto& init_tensors = graph.GetAllInitializedTensors();
   for (const auto& tensor : init_tensors) {
@@ -194,7 +198,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
       }
       std::unique_ptr<IndexedSubGraph> sub_graph = onnxruntime::make_unique<IndexedSubGraph>();
       // Find inputs and outputs of the subgraph
-      std::unordered_map<const NodeArg*, int> fused_inputs, fused_outputs, fused_outputs_to_add;
+      std::unordered_map<const NodeArg*, int> fused_inputs, fused_outputs, fused_outputs_to_add, overall_graph_output_to_add;
       std::unordered_set<const NodeArg*> erased;
       int input_order = 0;
       int output_order = 0;
@@ -207,6 +211,11 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
           const auto& it = fused_outputs.find(input);
 
           if (it != fused_outputs.end()) {
+            if(graph_outputs_set.count(input)!= 0){
+              std::cout << "PC-- Graph overall output to be added in meta_def: ";
+              std::cout << "first->Name: " << it->first->Name() << "  it->second: " << it->second << "\n";
+              overall_graph_output_to_add[input] = it->second;
+            }
             fused_outputs.erase(it);
             erased.insert(input);
           }
@@ -273,6 +282,10 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
         if (std::find(graph_outputs.begin(), graph_outputs.end(), it->first) != graph_outputs.end()) {
           outputs.insert(std::pair<int, const NodeArg*>(it->second, it->first));
         }
+      }
+      
+      for (auto it = overall_graph_output_to_add.begin(), end = overall_graph_output_to_add.end(); it != end; ++it) {
+        outputs.insert(std::pair<int, const NodeArg*>(it->second, it->first));
       }
 
       // Assign inputs and outputs to subgraph's meta_def
