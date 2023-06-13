@@ -12,8 +12,7 @@
 #include "math.h"
 
 #include <string>
-#include <iostream> //PC-- test
-#include <unordered_set> //PC --test
+#include <unordered_set>
 
 
 //#define TIDL_IMPORT_ONNX
@@ -172,7 +171,6 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
     graph_build.AddNode(node.Name(), node.OpType(), node.Description(), inputs, outputs, &node.GetAttributes(), node.Domain());
   }
   const auto graph_outputs = graph.GetOutputs();
-  //PC-- added test
   std::unordered_set<const NodeArg*> graph_outputs_set(graph_outputs.cbegin(), graph_outputs.cend());
   //Add initializer to graph
   const auto& init_tensors = graph.GetAllInitializedTensors();
@@ -212,8 +210,6 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
           if (it != fused_outputs.end()) {
             if(graph_outputs_set.count(input)!= 0){
-              std::cout << "PC-- Graph overall output to be added in meta_def: ";
-              std::cout << "first->Name: " << it->first->Name() << "  it->second: " << it->second << "\n";
               overall_graph_output_to_add[input] = it->second;
             }
             fused_outputs.erase(it);
