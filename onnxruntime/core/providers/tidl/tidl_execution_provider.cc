@@ -15,6 +15,7 @@
 #include <unordered_set>
 
 
+
 //#define TIDL_IMPORT_ONNX
 
 namespace onnxruntime {
@@ -156,6 +157,50 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   onnxruntime::Graph& graph_build = model.MainGraph();
   const std::vector<NodeIndex>& node_index = graph.GetNodesInTopologicalOrder();
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //PC-- added test 2
+  std::cout <<"PC-- Mapping Supported nodes to topological order using nodes names\n";
+  std::vector<std::vector<int>> to_supported_nodes_vector;
+  std::vector<int> node_index_used;
+  std::string name_no, name_to;
+  //Create a vector to track if a node_index match w supported_nodes_vector was previously found/used to skipped
+  for (int l=0; l<node_index.size(); l++)
+  {
+    node_index_used.push_back(0);
+  }
+
+  for(int i = 0; i < supported_nodes_vector.size(); i++)
+  {
+    std::vector<int> group_nodes;
+    for(int j = 0; j < supported_nodes_vector[i].size(); j++)
+    {
+      name_no = onnxGraph.node(supported_nodes_vector[i][j]).name();
+      for(int k=0; k< node_index.size(); k++)
+      {
+        name_to = graph.GetNode(node_index[k])->Name();
+        if((strcmp(name_no.c_str(), name_to.c_str())==0) && name_no.size()!=0 && node_index_used[k]!=1)
+        {
+          group_nodes.push_back(k);
+          node_index_used[k]= 1;
+          std::cout << "found match name node_index[" << k << "] and supported_nodes_vector[" << i << "][]" << j << "] name_no:" << name_no << " name_to:" << name_to << "\n";
+          break;
+        }
+        //Case where we don't have names - use topological node number. This could fail if there are onnxruntime graph opt but to test for now.
+        else if(name_no.size()==0 && node_index_used[k]!=1)
+        {
+          group_nodes.push_back(node_index[k]);
+          node_index_used[k]= 1;
+          std::cout << "found match name node_index[" << k << "] and supported_nodes_vector[" << i << "][]" << j << "] name_no:" << name_no << " name_to:" << name_to << "\n";
+          break;
+        }
+      }
+    }
+    to_supported_nodes_vector.push_back(group_nodes);
+  }
+  std::cout << "-------------------------------------------------------------------------------------\n"; 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   std::set<NodeArg*> all_node_inputs;
   for (const auto& node : graph.Nodes()) {
     std::vector<onnxruntime::NodeArg*> inputs, outputs;
@@ -187,7 +232,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   int counter = 0;
 
-  for (const auto& group : supported_nodes_vector) {
+  for (const auto& group : to_supported_nodes_vector) { //PC-- test2
     if (!group.empty()) {
       std::unordered_set<size_t> node_set;
       node_set.reserve(group.size());
