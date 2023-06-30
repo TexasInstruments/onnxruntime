@@ -209,6 +209,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
           const auto& it = fused_outputs.find(input);
 
           if (it != fused_outputs.end()) {
+            // Adding graph overall outputs which are also input for other nodes
             if(graph_outputs_set.count(input)!= 0){
               overall_graph_output_to_add[input] = it->second;
             }
