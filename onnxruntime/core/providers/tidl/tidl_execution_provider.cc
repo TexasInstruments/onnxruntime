@@ -157,20 +157,18 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   onnxruntime::Graph& graph_build = model.MainGraph();
   const std::vector<NodeIndex>& node_index = graph.GetNodesInTopologicalOrder();
 
-  //Mapping Supported nodes to topological order using output's nodes names
+  //Mapping Supported nodes to topological order using names from node's output
   std::vector<std::vector<int>> to_supported_nodes_vector;
-  std::string name_no, name_to, output_no, output_to;
+  std::string output_no, output_to;
 
   for(int i = 0; i < supported_nodes_vector.size(); i++)
   {
     std::vector<int> group_nodes;
     for(int j = 0; j < supported_nodes_vector[i].size(); j++)
     {
-      name_no = onnxGraph.node(supported_nodes_vector[i][j]).name();
       output_no = onnxGraph.node(supported_nodes_vector[i][j]).output(0);
       for(int k=0; k< node_index.size(); k++)
       {
-        name_to = graph.GetNode(node_index[k])->Name();
         const auto& node = graph.GetNode(node_index[k]);
         const auto& output_defs = node->OutputDefs();
         output_to = output_defs[0]->Name();
