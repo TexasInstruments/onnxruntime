@@ -3,16 +3,18 @@
 
 
 #include "tidl_execution_provider.h"
+// #include "core/providers/shared_library/provider_api.h"
 #include "core/framework/allocatormgr.h"
 #include "core/framework/compute_capability.h"
 #include "core/session/onnxruntime_cxx_api.h"
 #include "core/session/inference_session.h"
 #include "core/graph/model.h"
+#include "core/graph/graph.h"
 #include "float.h"
 #include "math.h"
+#include "/home/a0507216/work/onnx_rt/onnx_1140/onnxruntime/onnxruntime/core/graph/function.cc"
 
 #include <string>
-#include <unordered_set>
 
 
 //#define TIDL_IMPORT_ONNX
@@ -27,13 +29,13 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
     : IExecutionProvider{onnxruntime::kTidlExecutionProvider} {
   AllocatorCreationInfo default_memory_info{
       [](int) {
-        return onnxruntime::make_unique<CPUAllocator>(OrtMemoryInfo(TIDL, OrtAllocatorType::OrtDeviceAllocator));
+        return std::make_unique<CPUAllocator>(OrtMemoryInfo(TIDL, OrtAllocatorType::OrtDeviceAllocator)); //Changed onnxruntime::make_unique to std::make_unique
       },
       0};
 
    AllocatorCreationInfo cpu_memory_info{
       [](int) {
-        return onnxruntime::make_unique<CPUAllocator>(
+        return std::make_unique<CPUAllocator>( //Changed onnxruntime::make_unique to std::make_unique
             OrtMemoryInfo(TIDL_CPU, OrtAllocatorType::OrtDeviceAllocator, OrtDevice(), 0, OrtMemTypeCPUOutput));
       }};
 
@@ -98,7 +100,7 @@ int32_t TidlExecutionProvider::GetCustomMemStats(uint64_t * read, uint64_t * wri
 
 std::vector<std::unique_ptr<ComputeCapability>>
 TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
-                                      const std::vector<const KernelRegistry*>& /*kernel_registries*/) const {
+                                      const onnxruntime::IExecutionProvider::IKernelLookup& /*kernel_registries*/) const { //const std::vector<const onnxruntime::KernelRegistry*>& changed to const onnxruntime::IExecutionProvider::IKernelLookup&
    // check if all nodes have shape for Input
 #if 0
   for (const auto& node : graph.Nodes())
@@ -156,32 +158,6 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   onnxruntime::Graph& graph_build = model.MainGraph();
   const std::vector<NodeIndex>& node_index = graph.GetNodesInTopologicalOrder();
-
-  //Mapping Supported nodes to topological order using names from node's output
-  std::vector<std::vector<int>> to_supported_nodes_vector;
-  std::string output_no, output_to;
-
-  for(int i = 0; i < supported_nodes_vector.size(); i++)
-  {
-    std::vector<int> group_nodes;
-    for(int j = 0; j < supported_nodes_vector[i].size(); j++)
-    {
-      output_no = onnxGraph.node(supported_nodes_vector[i][j]).output(0);
-      for(int k=0; k< node_index.size(); k++)
-      {
-        const auto& node = graph.GetNode(node_index[k]);
-        const auto& output_defs = node->OutputDefs();
-        output_to = output_defs[0]->Name();
-        if((strcmp(output_no.c_str(), output_to.c_str())==0))
-        {
-          group_nodes.push_back(k);
-          break;
-        }
-      }
-    }
-    to_supported_nodes_vector.push_back(group_nodes);
-  }
-
   std::set<NodeArg*> all_node_inputs;
   for (const auto& node : graph.Nodes()) {
     std::vector<onnxruntime::NodeArg*> inputs, outputs;
@@ -197,7 +173,6 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
     graph_build.AddNode(node.Name(), node.OpType(), node.Description(), inputs, outputs, &node.GetAttributes(), node.Domain());
   }
   const auto graph_outputs = graph.GetOutputs();
-  std::unordered_set<const NodeArg*> graph_outputs_set(graph_outputs.cbegin(), graph_outputs.cend());
   //Add initializer to graph
   const auto& init_tensors = graph.GetAllInitializedTensors();
   for (const auto& tensor : init_tensors) {
@@ -206,27 +181,26 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   ORT_ENFORCE(graph_build.Resolve().IsOK());
 
-  std::unique_ptr<IndexedSubGraph> sub_graph = onnxruntime::make_unique<IndexedSubGraph>();
+  std::unique_ptr<IndexedSubGraph> sub_graph = std::make_unique<IndexedSubGraph>(); //Changed onnxruntime::make_unique to std::make_unique
 
   // Find inputs, initializers and outputs for each supported subgraph
   std::vector<std::unique_ptr<ComputeCapability>> result;
 
   int counter = 0;
 
-  for (const auto& group : to_supported_nodes_vector) {
+  for (const auto& group : supported_nodes_vector) {
     if (!group.empty()) {
       std::unordered_set<size_t> node_set;
       node_set.reserve(group.size());
       for (const auto& index : group) {
         node_set.insert(node_index[index]);
       }
-      std::unique_ptr<IndexedSubGraph> sub_graph = onnxruntime::make_unique<IndexedSubGraph>();
+      std::unique_ptr<IndexedSubGraph> sub_graph = std::make_unique<IndexedSubGraph>(); //Changed onnxruntime::make_unique to std::make_unique
       // Find inputs and outputs of the subgraph
-      std::unordered_map<const NodeArg*, int> fused_inputs, fused_outputs, fused_outputs_to_add, overall_graph_output_to_add;
+      std::unordered_map<const NodeArg*, int> fused_inputs, fused_outputs, fused_outputs_to_add;
       std::unordered_set<const NodeArg*> erased;
       int input_order = 0;
       int output_order = 0;
-
       for (const auto& index : group) {
         sub_graph->nodes.push_back(node_index[index]);
         const auto& node = graph.GetNode(node_index[index]);
@@ -235,10 +209,6 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
           const auto& it = fused_outputs.find(input);
 
           if (it != fused_outputs.end()) {
-            // Adding graph overall outputs which are also input for other nodes
-            if(graph_outputs_set.count(input)!= 0){
-              overall_graph_output_to_add[input] = it->second;
-            }
             fused_outputs.erase(it);
             erased.insert(input);
           }
@@ -307,12 +277,9 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
         }
       }
 
-      for (auto it = overall_graph_output_to_add.begin(), end = overall_graph_output_to_add.end(); it != end; ++it) {
-        outputs.insert(std::pair<int, const NodeArg*>(it->second, it->first));
-      }
-
       // Assign inputs and outputs to subgraph's meta_def
-      auto meta_def = onnxruntime::make_unique<::onnxruntime::IndexedSubGraph::MetaDef>();
+      auto meta_def = std::make_unique<::onnxruntime::IndexedSubGraph::MetaDef>(); //Changed onnxruntime::make_unique to std::make_unique
+      // auto meta_def = ::onnxruntime::IndexedSubGraph_MetaDef::Create();
       meta_def->name = "TIDL_" + std::to_string(counter++);
       meta_def->domain = kMSDomain;
 
@@ -326,8 +293,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
       meta_def->since_version = 1;
       sub_graph->SetMetaDef(std::move(meta_def));
-
-      result.push_back(onnxruntime::make_unique<ComputeCapability>(std::move(sub_graph)));
+      result.push_back(std::make_unique<ComputeCapability>(std::move(sub_graph))); //Changed onnxruntime::make_unique to std::make_unique
     }
   }
   return result;
@@ -337,67 +303,30 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
 {
   int32_t i, currInIdx = 0;
   onnxRtParams_t * onnxRtParams = &state_subGraph->onnxRtParams;
-  // populate input params
   for (i = 0; i < state_subGraph->numInputs; i++)
   {
-    auto* input_tensor = ort.KernelContext_GetInput(context, state_subGraph->inputIdx[i]);
+    const OrtValue* input_tensor = ort.KernelContext_GetInput(context, state_subGraph->inputIdx[i]);
     OrtTensorTypeAndShapeInfo* input_tensor_info = ort.GetTensorTypeAndShape(input_tensor);
     int64_t inTensorElementType = ort.GetTensorElementType(input_tensor_info);
     const auto& tensor_shape = ort.GetTensorShape(input_tensor_info);
     ort.ReleaseTensorTypeAndShapeInfo(input_tensor_info);
 
     void * input;
-    if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
+    if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
     {
-      input = ort.GetTensorMutableData<float>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
-    {
-      input = ort.GetTensorMutableData<uint8_t>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8)
-    {
-      input = ort.GetTensorMutableData<int8_t>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16)
-    {
-      input = ort.GetTensorMutableData<uint16_t>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16)
-    {
-      input = ort.GetTensorMutableData<int16_t>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32)
-    {
-      input = ort.GetTensorMutableData<uint32_t>(const_cast<OrtValue*>(input_tensor));
+      input = const_cast<uint8_t*>(ort.GetTensorData<uint8_t>(input_tensor));
     }
     else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
     {
-      input = ort.GetTensorMutableData<int32_t>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64)
-    {
-      input = ort.GetTensorMutableData<uint64_t>(const_cast<OrtValue*>(input_tensor));
+      input = const_cast<int32_t*>(ort.GetTensorData<int32_t>(input_tensor));
     }
     else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
     {
-      input = ort.GetTensorMutableData<int64_t>(const_cast<OrtValue*>(input_tensor));
+      input = const_cast<int64_t*>(ort.GetTensorData<int64_t>(input_tensor));
     }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
     {
-      input = ort.GetTensorMutableData<uint16_t>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE)
-    {
-      input = ort.GetTensorMutableData<double>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING)
-    {
-      input = ort.GetTensorMutableData<std::string>(const_cast<OrtValue*>(input_tensor));
-    }
-    else if (inTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL)
-    {
-      input = ort.GetTensorMutableData<bool>(const_cast<OrtValue*>(input_tensor));
+      input = const_cast<float*>(ort.GetTensorData<float>(input_tensor));
     }
     else
     {
@@ -438,57 +367,21 @@ void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context
     int64_t outTensorElementType = ort.GetTensorElementType(output_info);
     ort.ReleaseTensorTypeAndShapeInfo(output_info);
     void * output;
-    if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
-    {
-      output = ort.GetTensorMutableData<float>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
+    if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8)
     {
       output = ort.GetTensorMutableData<uint8_t>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8)
-    {
-      output = ort.GetTensorMutableData<int8_t>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16)
-    {
-      output = ort.GetTensorMutableData<uint16_t>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16)
-    {
-      output = ort.GetTensorMutableData<int16_t>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32)
-    {
-      output = ort.GetTensorMutableData<uint32_t>(output_tensor);
     }
     else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32)
     {
       output = ort.GetTensorMutableData<int32_t>(output_tensor);
     }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64)
-    {
-      output = ort.GetTensorMutableData<uint64_t>(output_tensor);
-    }
     else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
     {
       output = ort.GetTensorMutableData<int64_t>(output_tensor);
     }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16)
+    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
     {
-      output = ort.GetTensorMutableData<uint16_t>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE)
-    {
-      output = ort.GetTensorMutableData<double>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING)
-    {
-      output = ort.GetTensorMutableData<std::string>(output_tensor);
-    }
-    else if (outTensorElementType == ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL)
-    {
-      output = ort.GetTensorMutableData<bool>(output_tensor);
+      output = ort.GetTensorMutableData<float>(output_tensor);
     }
     else
     {
@@ -498,18 +391,22 @@ void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context
     onnxRtParams->outputTensorElementType[j] = outTensorElementType;
   }
 }
-
-common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Node*>& fused_nodes,
+Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fused_nodes_and_graphs, // !!AL!! Changed from onnxruntime::Node* fused_nodes to <FusedNodeAndGraph> fused_nodes_and_graphs
                                                std::vector<NodeComputeInfo>& node_compute_funcs) {
-   for (const auto* fused_node : fused_nodes) {
-    // Reconstruct graph proto from fused node's function body
-    const auto* func_body = fused_node->GetFunctionBody();
-    if (!func_body) {
-      return common::Status(common::ONNXRUNTIME, common::INVALID_ARGUMENT, "Function body is empty");
-    }
-    const Graph& graph_body = func_body->Body();
+
+  for (auto& fused_node_graph : fused_nodes_and_graphs) {
+    const GraphViewer& graph_body_viewer = fused_node_graph.filtered_graph;
+    const Node& fused_node = fused_node_graph.fused_node;
+    const Graph& graph = graph_body_viewer.GetGraph();
+    Graph& graph_body1 = const_cast<Graph&>(graph);
+    const IndexedSubGraph* indexed_sub_graph = graph_body_viewer.GetFilterInfo(); //changed from func_body->Body() to graph_body_viewer.GetGraph()
+    const auto func_body = FunctionImpl(graph_body1, *indexed_sub_graph);
+    // if (!func_body) {
+    //   return common::Status(common::ONNXRUNTIME, common::INVALID_ARGUMENT, "Function body is empty");
+    // }
+    const Graph& graph_body = func_body.Body();
     onnxruntime::Model model(graph_body.Name(), true, ModelMetaData(), PathString(),
-                             IOnnxRuntimeOpSchemaRegistryList(), graph_body.DomainToVersionMap(),
+                             IOnnxRuntimeOpSchemaRegistryList(), graph.DomainToVersionMap(),
                              std::vector<ONNX_NAMESPACE::FunctionProto>(), *GetLogger());
     ONNX_NAMESPACE::ModelProto* model_proto = new ONNX_NAMESPACE::ModelProto();
     *model_proto = model.ToProto();
@@ -519,9 +416,7 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
     std::string * string_buf = new std::string();
     *string_buf = model_proto->SerializeAsString();
 
-
-    model_protos_.emplace(fused_node->Name(), string_buf);
-
+    model_protos_.emplace(fused_node.Name(), string_buf);
     NodeComputeInfo compute_info;
 
     subgraph_serial_number_ = 0;
@@ -556,16 +451,16 @@ common::Status TidlExecutionProvider::Compile(const std::vector<onnxruntime::Nod
        free(state);
     };
 
-    compute_info.compute_func = [&](FunctionState state, const OrtCustomOpApi* api, OrtKernelContext* context)
-    {
+    compute_info.compute_func = [&](FunctionState state, const OrtApi* api, OrtKernelContext* context)
+    {///* !!AL!! Changes OrtCustomApi* to OrtApi* */
       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
       Ort::CustomOpApi ort{*api};
-
       populateOnnxRtInputParams(ort, context, tidl_ops_, state_subGraph);
       if(is_import_)
       {
+        printf(" Graph Domain TO version : %d", graph.DomainToVersionMap().at(kOnnxDomain));
         std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
-        tidl_ops_->TIDL_computeImportFunc(state_subGraph, string_buf, graph_body.DomainToVersionMap().at(kOnnxDomain));
+        tidl_ops_->TIDL_computeImportFunc(state_subGraph, string_buf, graph.DomainToVersionMap().at(kOnnxDomain));
       }
       populateOnnxRtOutputParams(ort, context, tidl_ops_, state_subGraph);
       tidl_ops_->TIDL_computeInvokeFunc(state_subGraph);
