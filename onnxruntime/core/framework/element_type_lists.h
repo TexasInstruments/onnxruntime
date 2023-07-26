@@ -7,7 +7,6 @@
 #include <string>
 
 #include "boost/mp11.hpp"
-
 #include "core/common/type_list.h"
 #include "core/framework/float16.h"
 

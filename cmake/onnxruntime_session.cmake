@@ -35,11 +35,10 @@ onnxruntime_add_include_to_target(onnxruntime_session onnxruntime_common onnxrun
 if(onnxruntime_ENABLE_INSTRUMENT)
   target_compile_definitions(onnxruntime_session PUBLIC ONNXRUNTIME_ENABLE_INSTRUMENT)
 endif()
-
+target_include_directories(onnxruntime_session PRIVATE ${ONNXRUNTIME_ROOT} ${PROJECT_SOURCE_DIR}/external/json ${eigen_INCLUDE_DIRS} )
 if(NOT MSVC)
   set_source_files_properties(${ONNXRUNTIME_ROOT}/core/session/environment.cc PROPERTIES COMPILE_FLAGS  "-Wno-parentheses")
 endif()
-target_include_directories(onnxruntime_session PRIVATE ${ONNXRUNTIME_ROOT} ${eigen_INCLUDE_DIRS})
 if (onnxruntime_USE_EXTENSIONS)
   target_link_libraries(onnxruntime_session PRIVATE onnxruntime_extensions)
 endif()

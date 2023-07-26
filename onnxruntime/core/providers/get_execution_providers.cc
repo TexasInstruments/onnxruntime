@@ -66,6 +66,22 @@ constexpr ProviderInfo kProvidersInPriorityOrder[] =
 #endif
         },
         {
+            kTidlExecutionProvider,
+#ifdef USE_TIDL
+            true,
+#else
+            false,
+#endif
+        },
+        {
+            kTidlCompilationProvider,
+#ifdef USE_TIDL
+            true,
+#else
+            false,
+#endif
+        },
+        {
             kTvmExecutionProvider,
 #ifdef USE_TVM
             true,

@@ -467,6 +467,11 @@ class InferenceSession {
    */
   const logging::Logger* GetLogger() const { return session_logger_; };
 
+  /**
+  * Get subgraph level data for TIDL
+  */
+  std::vector<std::pair<std::string, uint64_t>> get_TI_benchmark_data();
+
   const SessionState& GetSessionState() const {
     ORT_ENFORCE(session_state_ != nullptr, "Session must be initialized to create session state.");
     return *session_state_;
@@ -794,6 +799,9 @@ class InferenceSession {
   // Longer term we may want to directly refer to offsets in this buffer for initializers so we don't need to copy
   // those into new OrtValue instances, at which point we won't free them until the InferenceSession goes away.
   gsl::span<const uint8_t> ort_format_model_bytes_;
+
+  uint64_t run_start_ts, run_start_ddr_read, run_start_ddr_write;
+  uint64_t run_end_ts, run_end_ddr_read, run_end_ddr_write;
 
   // This holds the actual model data
   // In case if the session is started with an input byte array contains model data, and the caller

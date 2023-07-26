@@ -52,6 +52,17 @@ class FunctionKernel : public OpKernel {
                                        reinterpret_cast<OrtKernelContext*>(context_internal));
   }
 
+  virtual Status Custom(char **node_name, void **node_data) const {
+    if(compute_info_->custom_func)
+    {
+      return compute_info_->custom_func(func_state_, node_name, node_data);
+    }
+    else
+    {
+      return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "No Custon Data \n");
+    }
+  }
+
  private:
   const NodeComputeInfo* const compute_info_;
   FunctionState func_state_{nullptr};

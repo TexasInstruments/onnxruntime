@@ -378,7 +378,6 @@ static Status PartitionOnnxFormatModelImpl(Graph& graph, FuncManager& func_mgr,
   const std::string& type = current_ep.Type();
   auto fusion_style = current_ep.GetFusionStyle();
   std::vector<Node*> nodes_to_compile;
-
   // The fused node may map to an existing kernel, so it is fused but doesn't need to be compiled
   // But we still need to finalize the graph fusion for those nodes.
   std::vector<Node*> nodes_to_complete_fuse;
@@ -436,12 +435,13 @@ static Status PartitionOnnxFormatModelImpl(Graph& graph, FuncManager& func_mgr,
       if (node_compute_funcs.size() != nodes_to_compile.size()) {
         return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, type, " did not return correct number of compiled functions");
       }
-
       for (size_t j = 0, end = nodes_to_compile.size(); j < end; j++) {
+        if(nodes_to_compile[j]->OpType() != "TIDL_0")
+        {
+          node_compute_funcs[j].custom_func = NULL;
+        }
         auto* node = nodes_to_compile[j];
-
         ORT_RETURN_IF_ERROR(func_mgr.AddFuncInfo(node->Name(), std::move(node_compute_funcs[j])));
-
         const auto& cur_capability = capabilities_to_compile[j];
         const IndexedSubGraph& indexed_sub_graph = *cur_capability->sub_graph;
         const IndexedSubGraph::MetaDef& metadef = *indexed_sub_graph.GetMetaDef();
