@@ -12,7 +12,7 @@
 #include "core/graph/graph.h"
 #include "float.h"
 #include "math.h"
-#include "/home/a0507216/work/onnx_rt/onnx_1140/onnxruntime/onnxruntime/core/graph/function.cc"
+#include "core/graph/function.cc"
 
 #include <string>
 

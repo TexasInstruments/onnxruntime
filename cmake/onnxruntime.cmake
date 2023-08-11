@@ -37,7 +37,7 @@ macro(get_mobile_api_headers _HEADERS)
   endforeach()
 endmacro()
 
-list(APPEND ${_HEADERS} "/home/a0507216/work/onnx_rt/onnx_1140/onnxruntime/build_x86_64/Release/_deps/mp11-src/include/boost/mp11.hpp")
+list(APPEND ${_HEADERS} "${CMAKE_CURRENT_BINARY_DIR}/_deps/mp11-src/include/boost/mp11.hpp")
 
 #If you want to verify if there is any extra line in symbols.txt, run
 # nm -C -g --defined libonnxruntime.so |grep -v '\sA\s' | cut -f 3 -d ' ' | sort
