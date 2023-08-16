@@ -62,7 +62,7 @@ def infer_image(sess, image_file, config):
   stop_time = time.time()
   infer_time = stop_time - start_time
 
-#   benchmark_dict = sess.get_TI_benchmark_data()
+  benchmark_dict = sess.get_TI_benchmark_data()
 #   print(benchmark_dict['ts:run_end'] - benchmark_dict['ts:run_start'])
 #   print(benchmark_dict)
 

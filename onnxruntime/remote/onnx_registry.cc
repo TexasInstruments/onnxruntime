@@ -9,4 +9,4 @@ REGISTER_MSG(onnx_run_session);
 REGISTER_MSG(onnx_session_from_file);
 REGISTER_MSG(onnx_session_from_buffer);
 REGISTER_MSG(onnx_destroy_session);
-// REGISTER_MSG(onnx_get_TI_benchmark_data_session);
+REGISTER_MSG(onnx_get_TI_benchmark_data_session);

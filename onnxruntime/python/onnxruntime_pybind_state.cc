@@ -1721,26 +1721,26 @@ including arg name, arg type (contains both type and shape).)pbdoc")
            })
 
 #ifdef USE_TIDL
-//       .def("get_TI_benchmark_data", [](PyInferenceSession* sess) -> py::dict {
+      .def("get_TI_benchmark_data", [](PyInferenceSession* sess) -> py::dict {
 #ifdef USE_TIIE
-//         if(sess->is_remote) {
-//             roundtrip(onnx_get_TI_benchmark_data_session, sess->remote_id);
-//             if(resp.status())
-//                 throw std::runtime_error("Transport error");
-//             py::dict benchmark_dict;
-//             for (auto e : resp.benchmark_data())
-//                 benchmark_dict[e.first.c_str()] = e.second;
-//             return benchmark_dict;
-//         }
+        if(sess->is_remote) {
+            roundtrip(onnx_get_TI_benchmark_data_session, sess->remote_id);
+            if(resp.status())
+                throw std::runtime_error("Transport error");
+            py::dict benchmark_dict;
+            for (auto e : resp.benchmark_data())
+                benchmark_dict[e.first.c_str()] = e.second;
+            return benchmark_dict;
+        }
 #endif
-      //   std::vector<std::pair<std::string, uint64_t>> res =  sess->GetSessionHandle()->get_TI_benchmark_data();
-      //   py::dict benchmark_dict;
-      //   for (auto e : res)
-      //   {
-      //       benchmark_dict[e.first.c_str()] = e.second;
-      //   }
-      //   return benchmark_dict;
-      // })
+        std::vector<std::pair<std::string, uint64_t>> res =  sess->GetSessionHandle()->get_TI_benchmark_data();
+        py::dict benchmark_dict;
+        for (auto e : res)
+        {
+            benchmark_dict[e.first.c_str()] = e.second;
+        }
+        return benchmark_dict;
+      })
 #endif
 
       /// This method accepts a dictionary of feeds (name -> OrtValue) and the list of output_names

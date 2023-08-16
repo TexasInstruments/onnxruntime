@@ -261,14 +261,14 @@ DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_destroy_session);
     return p;
 }
 
-// DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_get_TI_benchmark_data_session);
-//     auto sess = model_idr.find(m_id);
+DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_get_TI_benchmark_data_session);
+    auto sess = model_idr.find(m_id);
 
-//     p->m_benchmark_data = sess->get_TI_benchmark_data();
+    p->m_benchmark_data = sess->get_TI_benchmark_data();
 
-//     p->m_status = 0;
-//     return p;
-// }
+    p->m_status = 0;
+    return p;
+}
 
 /*
  * onnx_initialize_tidl_session request packet has a complex structure
@@ -363,19 +363,19 @@ void onnx_run_session_resp::read_from(std::istream& input) {
  * to read_from() / write_to() if __SKIP_SERIALIZE__ is added to the
  * yaml list
  */
-// void onnx_get_TI_benchmark_data_session_resp::write_to(std::ostream& output) const {
-//     packet::write<int32_t>(output, m_status);
-//     packet::write<uint32_t>(output, m_benchmark_data.size());
-//     for(auto it : m_benchmark_data) {
-//         packet::write_string(output, it.first);
-//         packet::write<uint64_t>(output, it.second);
-//     }
-// }
-// void onnx_get_TI_benchmark_data_session_resp::read_from(std::istream& input) {
-//     m_status = packet::read<int32_t>(input);
-//     m_benchmark_data = std::vector<std::pair<std::string, uint64_t>>(packet::read<uint32_t>(input));
-//     for(auto& it : m_benchmark_data) {
-//         it.first = packet::read_string(input);
-//         it.second = packet::read<uint64_t>(input);
-//     }
-// }
+void onnx_get_TI_benchmark_data_session_resp::write_to(std::ostream& output) const {
+    packet::write<int32_t>(output, m_status);
+    packet::write<uint32_t>(output, m_benchmark_data.size());
+    for(auto it : m_benchmark_data) {
+        packet::write_string(output, it.first);
+        packet::write<uint64_t>(output, it.second);
+    }
+}
+void onnx_get_TI_benchmark_data_session_resp::read_from(std::istream& input) {
+    m_status = packet::read<int32_t>(input);
+    m_benchmark_data = std::vector<std::pair<std::string, uint64_t>>(packet::read<uint32_t>(input));
+    for(auto& it : m_benchmark_data) {
+        it.first = packet::read_string(input);
+        it.second = packet::read<uint64_t>(input);
+    }
+}

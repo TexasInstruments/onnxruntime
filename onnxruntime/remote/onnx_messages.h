@@ -252,42 +252,42 @@ private:
     uint32_t m_id;
 };
 
-// class onnx_get_TI_benchmark_data_session_resp : public packet {
-// public:
-//     ~onnx_get_TI_benchmark_data_session_resp() {};
-//     explicit onnx_get_TI_benchmark_data_session_resp() {};
-//     explicit onnx_get_TI_benchmark_data_session_resp(const int32_t& status, const std::vector<std::pair<std::string, uint64_t>>& benchmark_data) :
-//         m_status(status), 
-//         m_benchmark_data(benchmark_data) {}
-//     const int32_t& status() { return m_status; }
-//     const std::vector<std::pair<std::string, uint64_t>>& benchmark_data() { return m_benchmark_data; }
-// protected:
-//     virtual void write_to(std::ostream& output) const override;
-//     virtual void read_from(std::istream& input) override;
-// private:
-//     int32_t m_status;
-//     std::vector<std::pair<std::string, uint64_t>> m_benchmark_data;
-//     friend class onnx_get_TI_benchmark_data_session_req;
-// };
-// class onnx_get_TI_benchmark_data_session_req : public packet {
-// public:
-//     ~onnx_get_TI_benchmark_data_session_req() {};
-//     explicit onnx_get_TI_benchmark_data_session_req() {};
-//     explicit onnx_get_TI_benchmark_data_session_req(const uint32_t& id) :
-//         m_id(id) {}
-//     const uint32_t& id() { return m_id; }
-//     virtual std::unique_ptr<packet> handle() override;
-//     static const uint32_t transport_id;
-// protected:
-//     virtual void write_to(std::ostream& output) const override {
-//         packet::write<uint32_t>(output, m_id);
-//     }
-//     virtual void read_from(std::istream& input) override {
-//         m_id = packet::read<uint32_t>(input);
-//     }
-// private:
-//     uint32_t m_id;
-// };
+class onnx_get_TI_benchmark_data_session_resp : public packet {
+public:
+    ~onnx_get_TI_benchmark_data_session_resp() {};
+    explicit onnx_get_TI_benchmark_data_session_resp() {};
+    explicit onnx_get_TI_benchmark_data_session_resp(const int32_t& status, const std::vector<std::pair<std::string, uint64_t>>& benchmark_data) :
+        m_status(status), 
+        m_benchmark_data(benchmark_data) {}
+    const int32_t& status() { return m_status; }
+    const std::vector<std::pair<std::string, uint64_t>>& benchmark_data() { return m_benchmark_data; }
+protected:
+    virtual void write_to(std::ostream& output) const override;
+    virtual void read_from(std::istream& input) override;
+private:
+    int32_t m_status;
+    std::vector<std::pair<std::string, uint64_t>> m_benchmark_data;
+    friend class onnx_get_TI_benchmark_data_session_req;
+};
+class onnx_get_TI_benchmark_data_session_req : public packet {
+public:
+    ~onnx_get_TI_benchmark_data_session_req() {};
+    explicit onnx_get_TI_benchmark_data_session_req() {};
+    explicit onnx_get_TI_benchmark_data_session_req(const uint32_t& id) :
+        m_id(id) {}
+    const uint32_t& id() { return m_id; }
+    virtual std::unique_ptr<packet> handle() override;
+    static const uint32_t transport_id;
+protected:
+    virtual void write_to(std::ostream& output) const override {
+        packet::write<uint32_t>(output, m_id);
+    }
+    virtual void read_from(std::istream& input) override {
+        m_id = packet::read<uint32_t>(input);
+    }
+private:
+    uint32_t m_id;
+};
 
 
 #endif

@@ -470,7 +470,7 @@ class InferenceSession {
   /**
   * Get subgraph level data for TIDL
   */
-  // std::vector<std::pair<std::string, uint64_t>> get_TI_benchmark_data();
+  std::vector<std::pair<std::string, uint64_t>> get_TI_benchmark_data();
 
   const SessionState& GetSessionState() const {
     ORT_ENFORCE(session_state_ != nullptr, "Session must be initialized to create session state.");

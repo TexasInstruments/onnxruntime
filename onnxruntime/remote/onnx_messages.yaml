@@ -45,10 +45,10 @@ onnx_destroy_session:
     req:
     - id: uint32_t
 
-# onnx_get_TI_benchmark_data_session:
-#     resp:
-#     - __skip_serialize__
-#     - status: int32_t
-#     - benchmark_data: std::vector<std::pair<std::string, uint64_t>>
-#     req:
-#     - id: uint32_t
+onnx_get_TI_benchmark_data_session:
+    resp:
+    - __skip_serialize__
+    - status: int32_t
+    - benchmark_data: std::vector<std::pair<std::string, uint64_t>>
+    req:
+    - id: uint32_t
