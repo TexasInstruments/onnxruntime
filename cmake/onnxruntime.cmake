@@ -38,6 +38,7 @@ macro(get_mobile_api_headers _HEADERS)
 endmacro()
 
 list(APPEND ${_HEADERS} "${CMAKE_CURRENT_BINARY_DIR}/_deps/mp11-src/include/boost/mp11.hpp")
+list(APPEND ${_HEADERS} "${CMAKE_FIND_ROOT_PATH}/usr/lib/python3.10/site-packages/numpy/core/include")
 
 #If you want to verify if there is any extra line in symbols.txt, run
 # nm -C -g --defined libonnxruntime.so |grep -v '\sA\s' | cut -f 3 -d ' ' | sort
