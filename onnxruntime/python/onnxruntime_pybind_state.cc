@@ -51,14 +51,14 @@ const OrtDevice::DeviceType OrtDevice::GPU;
 #pragma warning(disable : 4267 4996 4503 4003)
 #endif  // _MSC_VER
 
-
-// #ifdef USE_TIIE
-// #include <fs_utils.h>
-// #include <memstreambuf.h>
-// #include <common.h>
-// #include <experimental/filesystem>
-// #include "remote/onnx_messages.h"
-// #endif
+// removed commented out includes for TIIE
+#ifdef USE_TIIE
+#include <fs_utils.h>
+#include <memstreambuf.h>
+#include <common.h>
+#include <experimental/filesystem>
+#include "remote/onnx_messages.h"
+#endif
 
 #ifdef USE_TIDL
 using TIDLProviderOptions = std::vector<std::pair<std::string,std::string>>;
@@ -862,7 +862,7 @@ static void RegisterCustomOpDomains(PyInferenceSession* sess, const PySessionOpt
 #ifdef USE_TIIE
 void InitializeSession(PyInferenceSession* pysess,
                        const std::vector<std::string>& provider_types,
-                       const ProviderOptionsVector& provider_options,) {
+                       const ProviderOptionsVector& provider_options) {     // removed excess comma
 #else
 void InitializeSession(InferenceSession* sess,
                        ExecutionProviderRegistrationFn ep_registration_fn,
@@ -1119,11 +1119,16 @@ static std::vector<py::object> __run_remote(PyInferenceSession *sess,
         size_t len;
         if (!IAllocator::CalcMemSizeForArray(t.DataType()->Size(), t.Shape().Size(), &len))
             throw std::runtime_error("length overflow");
+        
+        std::string dataType = DataTypeImpl::ToString(t.DataType());
+        // recheck the next 2 lines for valid conversion from gsl::span to std::vector
+        std::vector<int64_t> dimVector;
+        std::copy(t.Shape().GetDims().begin(), t.Shape().GetDims().end(), dimVector.end());
 
         TIIETensor this_feed = std::make_tuple(
                 _.first, std::vector<uint8_t>(data, data + len),
-                DataTypeImpl::ToString(t.DataType()),
-                t.Shape().GetDims());
+                dataType,
+                dimVector);
         tiie_feeds.push_back(this_feed);
     }
     roundtrip(onnx_run_session, sess->remote_id, tiie_feeds, output_names);

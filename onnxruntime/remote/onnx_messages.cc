@@ -128,11 +128,11 @@ onnxruntime::Environment& GetEnv() {
     if (initialized) {
       return *session_env;
     }
-    status = onnxruntime::Environment::Create(onnxruntime::make_unique<onnxruntime::logging::LoggingManager>(
+    status = onnxruntime::Environment::Create(std::make_unique<onnxruntime::logging::LoggingManager>(
                                                   std::unique_ptr<onnxruntime::logging::ISink>{new onnxruntime::logging::CLogSink{}},
                                                   onnxruntime::logging::Severity::kWARNING, false, onnxruntime::logging::LoggingManager::InstanceType::Default,
                                                   &logger_id),
-                                              session_env);
+                                              session_env); //Changed onnxruntime::make_unique to std::make_unique
     if (!status.IsOK())
         ERROR("%s", status.ToString().c_str());
 
@@ -143,7 +143,7 @@ onnxruntime::Environment& GetEnv() {
 DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_initialize_cpu_session);
     onnxruntime::Status status;
     auto sess = model_idr.find(m_id);
-    auto func = onnxruntime::CreateExecutionProviderFactory_CPU(sess->GetSessionOptions().enable_cpu_mem_arena)->CreateProvider();
+    auto func = onnxruntime::CPUProviderFactoryCreator::Create(sess->GetSessionOptions().enable_cpu_mem_arena)->CreateProvider();
 
     status = sess->RegisterExecutionProvider(std::move(func));
     if (!status.IsOK())
@@ -160,7 +160,7 @@ DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_initialize_cpu_session);
 DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_initialize_tidl_session);
     onnxruntime::Status status;
     auto sess = model_idr.find(m_id);
-    auto func_cpu = onnxruntime::CreateExecutionProviderFactory_CPU(sess->GetSessionOptions().enable_cpu_mem_arena)->CreateProvider();
+    auto func_cpu = onnxruntime::CPUProviderFactoryCreator::Create(sess->GetSessionOptions().enable_cpu_mem_arena)->CreateProvider();
     auto func_tidl = onnxruntime::CreateExecutionProviderFactory_Tidl(onnxruntime::kTidlExecutionProvider, m_options)->CreateProvider();
 
     status = sess->RegisterExecutionProvider(std::move(func_tidl));
@@ -192,7 +192,7 @@ DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_run_session);
         onnxruntime::MLDataType in_type = FromString(std::get<2>(_));
         onnxruntime::TensorShape in_shape(std::get<3>(_));
         
-        auto p_tensor = onnxruntime::make_unique<onnxruntime::Tensor>(in_type, in_shape, GetAllocator());
+        auto p_tensor = std::make_unique<onnxruntime::Tensor>(in_type, in_shape, GetAllocator()); //Changed onnxruntime::make_unique to std::make_unique
         memcpy(p_tensor->MutableDataRaw(in_type), in_data.data(), in_data.size());
         auto ml_tensor = onnxruntime::DataTypeImpl::GetType<onnxruntime::Tensor>();
         ml_value.Init(p_tensor.release(), ml_tensor, ml_tensor->GetDeleteFunc());
@@ -214,10 +214,17 @@ DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_run_session);
         if (!onnxruntime::IAllocator::CalcMemSizeForArray(t.DataType()->Size(), t.Shape().Size(), &len))
             throw std::runtime_error("length overflow");
 
+        std::string dataType = onnxruntime::DataTypeImpl::ToString(t.DataType());
+        std::string emptyString = "";
+        // recheck the next 2 lines for valid conversion from gsl::span to std::vector
+        std::vector<int64_t> dimVector;
+        std::copy(t.Shape().GetDims().begin(), t.Shape().GetDims().end(), dimVector.end());
+
         TIIETensor this_feed = std::make_tuple(
-                "", std::vector<uint8_t>(data, data + len),
-                onnxruntime::DataTypeImpl::ToString(t.DataType()),
-                t.Shape().GetDims());
+                emptyString, 
+                std::vector<uint8_t>(data, data + len),
+                dataType,
+                dimVector);
         p->m_out_data.push_back(this_feed);
     }
     return p;
