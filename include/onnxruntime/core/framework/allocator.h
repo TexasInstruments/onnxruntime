@@ -187,6 +187,9 @@ class CPUAllocator : public IAllocator {
   void Free(void* p) override;
 };
 
+// used in onnx_messages.cc
+using TAllocator = CPUAllocator;
+
 using AllocatorPtr = std::shared_ptr<IAllocator>;
 
 void* AllocatorDefaultAlloc(size_t size);
