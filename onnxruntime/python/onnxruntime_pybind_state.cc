@@ -861,8 +861,10 @@ static void RegisterCustomOpDomains(PyInferenceSession* sess, const PySessionOpt
 
 #ifdef USE_TIIE
 void InitializeSession(PyInferenceSession* pysess,
+                       ExecutionProviderRegistrationFn ep_registration_fn,
                        const std::vector<std::string>& provider_types,
-                       const ProviderOptionsVector& provider_options) {     // removed excess comma
+                       const ProviderOptionsVector& provider_options,
+                       const std::unordered_set<std::string>& disabled_optimizer_names) {     // changed function type to match
 #else
 void InitializeSession(InferenceSession* sess,
                        ExecutionProviderRegistrationFn ep_registration_fn,
@@ -1656,7 +1658,11 @@ including arg name, arg type (contains both type and shape).)pbdoc")
                                const ProviderOptionsVector& provider_options = {},
                                const std::unordered_set<std::string>& disabled_optimizer_names = {}) {
 #ifdef USE_TIIE
-            InitializeSession(sess, provider_types, provider_options);
+            InitializeSession(sess, 
+                              ep_registration_fn, 
+                              provider_types, 
+                              provider_options,
+                              disabled_optimizer_names);  // changed function definition to match
 #else
             InitializeSession(sess->GetSessionHandle(),
                               ep_registration_fn,
