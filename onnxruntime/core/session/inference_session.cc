@@ -1890,6 +1890,7 @@ Status InferenceSession::Run(const RunOptions& run_options,
   }
 
 // For TIDL
+#ifdef USE_TIDL
   auto tidl_ep = execution_providers_.Get(kTidlExecutionProvider);
   if(tidl_ep)
   {
@@ -1900,6 +1901,9 @@ Status InferenceSession::Run(const RunOptions& run_options,
   {
     run_start_ddr_read = 0; run_start_ddr_write = 0;
   }
+#else
+  run_start_ddr_read = 0; run_start_ddr_write = 0;
+#endif
 
   get_time_u64(&run_start_ts);
 
@@ -2061,6 +2065,7 @@ Status InferenceSession::Run(const RunOptions& run_options,
 
   get_time_u64(&run_end_ts);
 
+#ifdef USE_TIDL
   if(tidl_ep)
   {
     const TidlExecutionProvider* tidl_ep_ = reinterpret_cast<const TidlExecutionProvider*>(tidl_ep);
@@ -2070,6 +2075,9 @@ Status InferenceSession::Run(const RunOptions& run_options,
   {
     run_end_ddr_read = 0; run_end_ddr_write = 0;
   }
+#else
+  run_end_ddr_read = 0; run_end_ddr_write = 0;
+#endif
 
   // As two inference runs (one for memory allocation and one for graph capturing)
   // are needed before replaying the captured graph, here run the inference again
@@ -2495,6 +2503,7 @@ IOBinding* SessionIOBinding::Get() {
   return binding_.get();
 }
 
+#ifdef USE_TIDL
 std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark_data(){
   std::vector<std::pair<std::string, uint64_t>> res;
   std::vector<std::pair<std::string, void *>> c_data;
@@ -2550,4 +2559,5 @@ std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark
   }
   return res;
 }
+#endif
 }  // namespace onnxruntime
