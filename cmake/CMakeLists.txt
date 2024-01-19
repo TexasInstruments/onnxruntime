@@ -757,6 +757,7 @@ if(MSVC)
 endif()
 
 function(onnxruntime_set_compile_flags target_name)
+    message("CMakelists::CPUINFO = ${CPUINFO_SUPPORTED} ${target_name}")
     if (CPUINFO_SUPPORTED)
       onnxruntime_add_include_to_target(${target_name} cpuinfo)
     endif()

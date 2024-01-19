@@ -1,5 +1,9 @@
 onnxruntime_add_shared_library(onnxruntime_plugin ${ONNXRUNTIME_ROOT}/remote/onnx_messages.cc ${ONNXRUNTIME_ROOT}/remote/onnx_registry.cc)
 
+list(APPEND onnxruntime_EXTERNAL_DEPENDENCIES
+  cpuinfo
+)
+message("Before::onnxruntime_EXTERNAL_LIBRARIES: ${onnxruntime_EXTERNAL_LIBRARIES}")
 add_dependencies(onnxruntime_plugin ${onnxruntime_EXTERNAL_DEPENDENCIES})
 target_include_directories(onnxruntime_plugin PRIVATE ${ONNXRUNTIME_ROOT})
 onnxruntime_add_include_to_target(onnxruntime_plugin)
@@ -26,37 +30,50 @@ if(onnxruntime_USE_TIIE)
     add_dependencies(onnxruntime_plugin remote_header)
 endif(onnxruntime_USE_TIIE)
 
-target_link_libraries(onnxruntime_plugin PRIVATE
+set(onnxruntime_plugin_INTERNAL_LIBRARIES
     onnxruntime_session
     ${onnxruntime_libs}
-    ${PROVIDERS_CUDA}
-    ${PROVIDERS_NNAPI}
-    ${PROVIDERS_RKNPU}
-    ${PROVIDERS_MIGRAPHX}
-    ${PROVIDERS_NUPHAR}
-    ${PROVIDERS_VITISAI}
-    ${PROVIDERS_DML}
-    ${PROVIDERS_TIDL}
     ${PROVIDERS_ACL}
     ${PROVIDERS_ARMNN}
+    ${PROVIDERS_COREML}
+    ${PROVIDERS_DML}
+    ${PROVIDERS_TIDL}
+    ${PROVIDERS_NNAPI}
+    ${PROVIDERS_SNPE}
+    ${PROVIDERS_TVM}
+    ${PROVIDERS_RKNPU}
+    ${PROVIDERS_ROCM}
+    ${PROVIDERS_VITISAI}
+    ${PROVIDERS_XNNPACK}
+    ${PROVIDERS_AZURE}
     ${PROVIDERS_INTERNAL_TESTING}
     ${onnxruntime_winml}
-    ${PROVIDERS_ROCM}
-    ${PROVIDERS_COREML}
     onnxruntime_optimizer
     onnxruntime_providers
-    onnxruntime_util
     ${onnxruntime_tvm_libs}
     onnxruntime_framework
     onnxruntime_graph
+    onnxruntime_util
+    onnxruntime_mlas	# probably getting cpuinfo dependency from here -> check mlasi.h 
+    ${ONNXRUNTIME_MLAS_LIBS}
     onnxruntime_common
-    onnxruntime_mlas
     onnxruntime_flatbuffers
-    ${onnxruntime_EXTERNAL_LIBRARIES})
+)
 
 if (onnxruntime_ENABLE_LANGUAGE_INTEROP_OPS)
-  target_link_libraries(onnxruntime_plugin PRIVATE onnxruntime_language_interop onnxruntime_pyop)
+  list(APPEND onnxruntime_plugin_INTERNAL_LIBRARIES 
+  onnxruntime_language_interop 
+  onnxruntime_pyop
+  )
 endif()
+
+message("onnxruntime_plugin_INTERNAL_LIBRARIES: ${onnxruntime_plugin_INTERNAL_LIBRARIES}")
+message("onnxruntime_EXTERNAL_LIBRARIES: ${onnxruntime_EXTERNAL_LIBRARIES}")
+
+target_link_libraries(onnxruntime_plugin PRIVATE
+    ${onnxruntime_plugin_INTERNAL_LIBRARIES}
+    ${onnxruntime_EXTERNAL_LIBRARIES}
+)
 
 install(TARGETS onnxruntime_plugin
         ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
