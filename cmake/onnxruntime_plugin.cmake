@@ -1,12 +1,17 @@
 onnxruntime_add_shared_library(onnxruntime_plugin ${ONNXRUNTIME_ROOT}/remote/onnx_messages.cc ${ONNXRUNTIME_ROOT}/remote/onnx_registry.cc)
 
-list(APPEND onnxruntime_EXTERNAL_DEPENDENCIES
-  cpuinfo
-)
-message("Before::onnxruntime_EXTERNAL_LIBRARIES: ${onnxruntime_EXTERNAL_LIBRARIES}")
+onnxruntime_add_include_to_target(onnxruntime_plugin cpuinfo)
+onnxruntime_add_include_to_target(onnxruntime_plugin clog)
+
+list(APPEND onnxruntime_EXTERNAL_DEPENDENCIES cpuinfo clog)
+list(APPEND onnxruntime_EXTERNAL_LIBRARIES cpuinfo clog)
+
+message("onnxruntime_plugin::onnxruntime_EXTERNAL_DEPENDENCIES -1 : ${onnxruntime_EXTERNAL_DEPENDENCIES}")
 add_dependencies(onnxruntime_plugin ${onnxruntime_EXTERNAL_DEPENDENCIES})
 target_include_directories(onnxruntime_plugin PRIVATE ${ONNXRUNTIME_ROOT})
 onnxruntime_add_include_to_target(onnxruntime_plugin)
+
+message("onnxruntime_plugin::onnxruntime_EXTERNAL_DEPENDENCIES - 2: ${onnxruntime_EXTERNAL_DEPENDENCIES}")
 
 # strip binary on Android, or for a minimal build on Unix
 if(CMAKE_SYSTEM_NAME STREQUAL "Android" OR (onnxruntime_MINIMAL_BUILD AND UNIX))
@@ -29,6 +34,9 @@ if(onnxruntime_USE_TIIE)
     
     add_dependencies(onnxruntime_plugin remote_header)
 endif(onnxruntime_USE_TIIE)
+
+message("onnxruntime_plugin::onnxruntime_EXTERNAL_DEPENDENCIES - 3: ${onnxruntime_EXTERNAL_DEPENDENCIES}")
+
 
 set(onnxruntime_plugin_INTERNAL_LIBRARIES
     onnxruntime_session
