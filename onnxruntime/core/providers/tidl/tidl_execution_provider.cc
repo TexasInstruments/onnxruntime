@@ -234,6 +234,10 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
         const auto& node = graph.GetNode(node_index[index]);
 
         for (const auto& input : node->InputDefs()) {
+          if(!input->Exists()) /* Empty name indicates optional non-existent input argument, do not add to meta def input list */
+          {
+            continue;
+          }
           const auto& it = fused_outputs.find(input);
 
           if (it != fused_outputs.end()) {
@@ -274,6 +278,10 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
           }
         } else {
           for (const auto& output : node->OutputDefs()) {
+            if(!output->Exists())
+            {
+              continue;
+            }
             const auto& it = fused_inputs.find(output);
 
             if (it != fused_inputs.end()) {
@@ -308,7 +316,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
           outputs.insert(std::pair<int, const NodeArg*>(it->second, it->first));
         }
       }
-      
+
       for (auto it = overall_graph_output_to_add.begin(), end = overall_graph_output_to_add.end(); it != end; ++it) {
         outputs.insert(std::pair<int, const NodeArg*>(it->second, it->first));
       }
