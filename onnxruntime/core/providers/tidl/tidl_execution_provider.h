@@ -24,7 +24,7 @@
 
 #define TIDL_STRING_SIZE        ((int32_t) 512)
 #define TIDL_MAX_ALG_IN_BUFS    ((int32_t) 32)
-#define TIDL_MAX_ALG_OUT_BUFS   ((int32_t) 32)
+#define TIDL_MAX_ALG_OUT_BUFS   ((int32_t) 128)
 
 #define DEFAULT_COMPILE_CONSTRAINT_NC_FLAGS (0x1 | 0x40 | 0x200 | 0x400)
 

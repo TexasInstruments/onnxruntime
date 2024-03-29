@@ -13,7 +13,7 @@ using std::vector;
 
 #define TIDL_STRING_SIZE        ((int32_t) 512)
 #define TIDL_MAX_ALG_IN_BUFS    ((int32_t) 32)
-#define TIDL_MAX_ALG_OUT_BUFS   ((int32_t) 32)
+#define TIDL_MAX_ALG_OUT_BUFS   ((int32_t) 128)
 
 typedef struct {
   int32_t numNetInData;
