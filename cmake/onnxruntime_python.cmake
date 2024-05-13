@@ -332,8 +332,11 @@ if (MSVC)
 else()
   set_target_properties(onnxruntime_pybind11_state PROPERTIES SUFFIX ".so")
 endif()
-target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-lstdc++fs")
-target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-L${onnxruntime_TIIE_HOME} -lti_inference_client")
+
+if (onnxruntime_USE_TIIE)
+  target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-lstdc++fs")
+  target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-L${onnxruntime_TIIE_HOME} -lti_inference_client")
+endif()
 
 # Generate version_info.py in Windows build.
 # Has to be done before onnxruntime_python_srcs is set.

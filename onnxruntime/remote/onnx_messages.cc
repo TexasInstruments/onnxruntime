@@ -218,7 +218,7 @@ DECLARE_MSG(ONNX_SECTION + __COUNTER__, onnx_run_session);
         std::string emptyString = "";
         // recheck the next 2 lines for valid conversion from gsl::span to std::vector
         std::vector<int64_t> dimVector;
-        std::copy(t.Shape().GetDims().begin(), t.Shape().GetDims().end(), dimVector.end());
+        std::copy(t.Shape().GetDims().begin(), t.Shape().GetDims().end(), std::back_inserter(dimVector));
 
         TIIETensor this_feed = std::make_tuple(
                 emptyString, 

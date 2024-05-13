@@ -864,7 +864,7 @@ void InitializeSession(PyInferenceSession* pysess,
                        ExecutionProviderRegistrationFn ep_registration_fn,
                        const std::vector<std::string>& provider_types,
                        const ProviderOptionsVector& provider_options,
-                       const std::unordered_set<std::string>& disabled_optimizer_names) {     // changed function type to match
+                       const std::unordered_set<std::string>& disabled_optimizer_names) {
 #else
 void InitializeSession(InferenceSession* sess,
                        ExecutionProviderRegistrationFn ep_registration_fn,
@@ -874,12 +874,10 @@ void InitializeSession(InferenceSession* sess,
 #endif
   ProviderOptionsMap provider_options_map;
   GenerateProviderOptionsMap(provider_types, provider_options, provider_options_map);
-#ifdef USE_TIIE
-  InferenceSession *sess = pysess->GetSessionHandle();
-#endif
-  ep_registration_fn(sess, provider_types, provider_options_map);
 
 #ifdef USE_TIIE
+  InferenceSession *sess = pysess->GetSessionHandle();
+
   if (provider_types.empty()) {
     // use default registration priority.
     roundtrip(onnx_initialize_cpu_session, pysess->remote_id);
@@ -911,7 +909,6 @@ void InitializeSession(InferenceSession* sess,
 
     if (user_artifacts_folder.empty())
       throw std::runtime_error("artifacts_folder must be provided");
-
     send_dir(user_artifacts_folder.c_str());
     roundtrip(onnx_initialize_tidl_session, pysess->remote_id, options);
     if(resp.status())
@@ -922,7 +919,7 @@ void InitializeSession(InferenceSession* sess,
         throw std::runtime_error("Transport error");
   }
 #else
-
+  ep_registration_fn(sess, provider_types, provider_options_map);
 #if !defined(ORT_MINIMAL_BUILD) || defined(ORT_EXTENDED_MINIMAL_BUILD)
   if (!disabled_optimizer_names.empty()) {
     OrtPybindThrowIfError(sess->FilterEnabledOptimizers({disabled_optimizer_names.cbegin(), disabled_optimizer_names.cend()}));
@@ -1121,11 +1118,11 @@ static std::vector<py::object> __run_remote(PyInferenceSession *sess,
         size_t len;
         if (!IAllocator::CalcMemSizeForArray(t.DataType()->Size(), t.Shape().Size(), &len))
             throw std::runtime_error("length overflow");
-        
+
         std::string dataType = DataTypeImpl::ToString(t.DataType());
         // recheck the next 2 lines for valid conversion from gsl::span to std::vector
         std::vector<int64_t> dimVector;
-        std::copy(t.Shape().GetDims().begin(), t.Shape().GetDims().end(), dimVector.end());
+        std::copy(t.Shape().GetDims().begin(), t.Shape().GetDims().end(), std::back_inserter(dimVector));
 
         TIIETensor this_feed = std::make_tuple(
                 _.first, std::vector<uint8_t>(data, data + len),
@@ -1634,7 +1631,6 @@ including arg name, arg type (contains both type and shape).)pbdoc")
           if (is_arg_file_name) {
             std::string canonical_path = std::experimental::filesystem::canonical(arg);
             send_file(canonical_path.c_str());
-
             roundtrip(onnx_session_from_file, canonical_path);
             if(resp.status())
                 throw std::runtime_error("Transport error");
