@@ -419,9 +419,12 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
 
     for(int i = 0; i < inputNumDims; i++)
     {
-      onnxRtParams->tensorShape[currInIdx][TIDL_MAX_DIM-inputNumDims + i] = tensor_shape[i]; //Corruption of previous
+      if ((4-inputNumDims + i) >= 0)   // preventing corruption via write in negative indices
+      {
+        onnxRtParams->tensorShape[currInIdx][4-inputNumDims + i] = tensor_shape[i];
+      }
     }
-    for(int i = 0; i < (TIDL_MAX_DIM - inputNumDims); i++)
+    for(int i = 0; i < (4 - inputNumDims); i++)
     {
       onnxRtParams->tensorShape[currInIdx][i] = 1;
     }
