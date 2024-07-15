@@ -46,6 +46,7 @@ typedef  struct
     decltype(&::TIDL_getOutputShape) TIDL_getOutputShape;
     decltype(&::TIDLEP_getDdrStats) TIDLEP_getDdrStats;
     decltype(&::TIDLEP_getSubGraphStats) TIDLEP_getSubGraphStats;
+    decltype(&::TIDLEP_checkCompatibility) TIDLEP_checkCompatibility;
 } tidl_ops;
 
 // Information needed to construct TIDL execution providers.

@@ -64,6 +64,8 @@ extern "C"
   std::vector<int64_t> TIDL_getOutputShape(void * ioBufDescVPtr, int8_t onnxName[]);
   int32_t TIDLEP_getDdrStats(uint64_t * read, uint64_t * write);
   int32_t TIDLEP_getSubGraphStats(OnnxTIDLSubGraphParams * state_subGraph, char **node_name, void **node_data);
+  bool TIDLEP_checkCompatibility(const char *ortVersion);
+
 }
 
 

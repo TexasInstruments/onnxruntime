@@ -83,9 +83,16 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
   tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
   tidl_ops_->TIDLEP_getSubGraphStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getSubGraphStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getSubGraphStats"));
+  tidl_ops_->TIDLEP_checkCompatibility = reinterpret_cast<decltype(tidl_ops_->TIDLEP_checkCompatibility)>(dlsym(tidl_ops_->lib, "TIDLEP_checkCompatibility"));
 
   bool status = false;
+
+  status = tidl_ops_->TIDLEP_checkCompatibility(OrtGetApiBase()->GetVersionString());
+  ORT_ENFORCE(status == true);
+
   status = tidl_ops_->TIDL_populateOptions(interface_options);
+  ORT_ENFORCE(status == true);
+
   // TODO : how to pass error if status is false?
 }
 
@@ -577,7 +584,6 @@ Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fuse
       populateOnnxRtInputParams(ort, context, tidl_ops_, state_subGraph);
       if(is_import_)
       {
-        printf(" Graph Domain TO version : %d", graph.DomainToVersionMap().at(kOnnxDomain));
         std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
         tidl_ops_->TIDL_computeImportFunc(state_subGraph, string_buf, graph.DomainToVersionMap().at(kOnnxDomain));
       }
