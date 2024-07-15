@@ -157,7 +157,7 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   std::vector<std::vector<int>> supported_nodes_vector;
   if(is_import_)
   {
-    supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodesImport(string_buf, node_graph.DomainToVersionMap().at(kOnnxDomain));
+    supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodesImport(string_buf, OrtGetApiBase()->GetVersionString(), node_graph.DomainToVersionMap().at(kOnnxDomain));
   }
   else
   {

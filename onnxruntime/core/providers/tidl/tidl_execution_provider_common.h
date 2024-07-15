@@ -54,7 +54,7 @@ typedef struct
 extern "C"
 {
   bool TIDL_populateOptions(std::vector<std::pair<std::string,std::string>> interface_options);
-  std::vector<std::vector<int>> TIDL_getSupportedNodesImport(std::string& data, int32_t opsetVersion);
+  std::vector<std::vector<int>> TIDL_getSupportedNodesImport(std::string& data, std::string ortVersion, int32_t opsetVersion);
   std::vector<std::vector<int>> TIDL_getSupportedNodesInfer();
   void TIDL_createStateImportFunc(OnnxTIDLSubGraphParams * state_subgraph, std::string * string_buf, const std::string node_name);
   void TIDL_createStateInferFunc(OnnxTIDLSubGraphParams * state_subGraph, const std::string node_name);
