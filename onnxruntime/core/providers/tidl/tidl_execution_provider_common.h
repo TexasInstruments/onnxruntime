@@ -14,11 +14,12 @@ using std::vector;
 #define TIDL_STRING_SIZE        ((int32_t) 512)
 #define TIDL_MAX_ALG_IN_BUFS    ((int32_t) 32)
 #define TIDL_MAX_ALG_OUT_BUFS   ((int32_t) 128)
+#define TIDL_MAX_DIM ((int32_t)6U)
 
 typedef struct {
   int32_t numNetInData;
   int32_t numNetOutData;
-  int32_t tensorShape[TIDL_MAX_ALG_IN_BUFS][4];
+  int32_t tensorShape[TIDL_MAX_ALG_IN_BUFS][TIDL_MAX_DIM];
   int8_t  inDataNames[TIDL_MAX_ALG_IN_BUFS][TIDL_STRING_SIZE];
   int8_t  outDataNames[TIDL_MAX_ALG_OUT_BUFS][TIDL_STRING_SIZE];
   void *  inputTensorData[TIDL_MAX_ALG_IN_BUFS];

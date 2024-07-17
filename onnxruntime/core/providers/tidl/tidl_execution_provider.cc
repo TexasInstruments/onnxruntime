@@ -417,21 +417,23 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
     }
     else
     {
-      printf("ERROR : Unsupported input_tensor element type %d \n", inTensorElementType);
+      ORT_ENFORCE(false,"TIDL_EP: Unsupported input tensor element type: %d \n",inTensorElementType);
     }
 
     /** If input to the network has less than 4 dimensions, populate the lower index dimensions correctly
      * and put dimension as 1 for the remaining higher indices */
     int32_t inputNumDims = tensor_shape.size();
+    /*Enforce dimensionality check:*/
+    ORT_ENFORCE((TIDL_MAX_DIM-inputNumDims) >= 0,"TIDL_EP: Only tensors up to 6D are supported");
 
     for(int i = 0; i < inputNumDims; i++)
     {
-      if ((4-inputNumDims + i) >= 0)   // preventing corruption via write in negative indices
+      if ((TIDL_MAX_DIM - inputNumDims + i) >= 0)
       {
-        onnxRtParams->tensorShape[currInIdx][4-inputNumDims + i] = tensor_shape[i];
+        onnxRtParams->tensorShape[currInIdx][TIDL_MAX_DIM-inputNumDims + i] = tensor_shape[i]; //Corruption of previous
       }
     }
-    for(int i = 0; i < (4 - inputNumDims); i++)
+    for(int i = 0; i < (TIDL_MAX_DIM - inputNumDims); i++)
     {
       onnxRtParams->tensorShape[currInIdx][i] = 1;
     }
