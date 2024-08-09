@@ -55,14 +55,14 @@ typedef struct
 extern "C"
 {
   bool TIDL_populateOptions(std::vector<std::pair<std::string,std::string>> interface_options);
-  std::vector<std::vector<int>> TIDL_getSupportedNodesImport(std::string& data, std::string ortVersion, int32_t opsetVersion);
-  std::vector<std::vector<int>> TIDL_getSupportedNodesInfer();
-  void TIDL_createStateImportFunc(OnnxTIDLSubGraphParams * state_subgraph, std::string * string_buf, const std::string node_name);
-  void TIDL_createStateInferFunc(OnnxTIDLSubGraphParams * state_subGraph, const std::string node_name);
-  void TIDL_computeImportFunc(OnnxTIDLSubGraphParams * state_subGraph, std::string * string_buf, int32_t opSetVersion);
-  void TIDL_computeInvokeFunc(OnnxTIDLSubGraphParams * state_subGraph);
-  void TIDL_releaseRtFunc(OnnxTIDLSubGraphParams * state_subGraph);
-  std::vector<int64_t> TIDL_getOutputShape(void * ioBufDescVPtr, int8_t onnxName[]);
+  int32_t TIDL_getSupportedNodesImport(std::string& data, std::string ortVersion, int32_t opsetVersion, std::vector<std::vector<int>> &nodeGroups);
+  int32_t TIDL_getSupportedNodesInfer(std::vector<std::vector<int>> &nodeGroups);
+  int32_t TIDL_createStateImportFunc(OnnxTIDLSubGraphParams * state_subgraph, std::string * string_buf, const std::string node_name);
+  int32_t TIDL_createStateInferFunc(OnnxTIDLSubGraphParams * state_subGraph, const std::string node_name);
+  int32_t TIDL_computeImportFunc(OnnxTIDLSubGraphParams * state_subGraph, std::string * string_buf, int32_t opSetVersion);
+  int32_t TIDL_computeInvokeFunc(OnnxTIDLSubGraphParams * state_subGraph);
+  int32_t TIDL_releaseRtFunc(OnnxTIDLSubGraphParams * state_subGraph);
+  int32_t TIDL_getOutputShape(void * ioBufDescVPtr, int8_t onnxName[], std::vector<int64_t> &shape);
   int32_t TIDLEP_getDdrStats(uint64_t * read, uint64_t * write);
   int32_t TIDLEP_getSubGraphStats(OnnxTIDLSubGraphParams * state_subGraph, char **node_name, void **node_data);
   bool TIDLEP_checkCompatibility(const char *ortVersion);

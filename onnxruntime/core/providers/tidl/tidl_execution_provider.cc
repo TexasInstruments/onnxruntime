@@ -88,7 +88,7 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   bool status = false;
 
   status = tidl_ops_->TIDLEP_checkCompatibility(OrtGetApiBase()->GetVersionString());
-  ORT_ENFORCE(status == true);
+  ORT_ENFORCE(status == true, "Version compatibility check failed.");
 
   status = tidl_ops_->TIDL_populateOptions(interface_options);
   ORT_ENFORCE(status == true);
@@ -154,14 +154,17 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   std::string string_buf;
   string_buf = model_proto.SerializeAsString();
 
+  int32_t status = 0;
   std::vector<std::vector<int>> supported_nodes_vector;
   if(is_import_)
   {
-    supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodesImport(string_buf, OrtGetApiBase()->GetVersionString(), node_graph.DomainToVersionMap().at(kOnnxDomain));
+    status = tidl_ops_->TIDL_getSupportedNodesImport(string_buf, OrtGetApiBase()->GetVersionString(), node_graph.DomainToVersionMap().at(kOnnxDomain), supported_nodes_vector);
+    ORT_ENFORCE(status == 0, "Could not get supported nodes for compilation.");
   }
   else
   {
-    supported_nodes_vector = tidl_ops_->TIDL_getSupportedNodesInfer();
+    status = tidl_ops_->TIDL_getSupportedNodesInfer(supported_nodes_vector);
+    ORT_ENFORCE(status == 0, "Could not get supported nodes for inference.");
   }
 
   onnxruntime::Graph& graph_build = model.MainGraph();
@@ -447,13 +450,17 @@ void populateOnnxRtInputParams(Ort::CustomOpApi ort, OrtKernelContext * context,
   onnxRtParams->numNetOutData = state_subGraph->numOutputs;
 }
 
-void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context, tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
+int32_t populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context, tidl_ops * tidl_ops, OnnxTIDLSubGraphParams * state_subGraph)
 {
+  int32_t status = 0;
   onnxRtParams_t * onnxRtParams = &state_subGraph->onnxRtParams;
   //populate output params
   for (int j = 0; j < onnxRtParams->numNetOutData; j++)
   {
-    std::vector<int64_t> nchw_shape = tidl_ops->TIDL_getOutputShape(state_subGraph->tidlRtParams.ioBufDesc, onnxRtParams->outDataNames[j]);
+    std::vector<int64_t> nchw_shape{};
+    status = tidl_ops->TIDL_getOutputShape(state_subGraph->tidlRtParams.ioBufDesc, onnxRtParams->outDataNames[j], nchw_shape);
+    if(status != 0)
+      return status;
     auto* output_tensor = ort.KernelContext_GetOutput(context, j, nchw_shape.data(), nchw_shape.size());
     OrtTensorTypeAndShapeInfo* output_info = ort.GetTensorTypeAndShape(output_tensor);
     int64_t outTensorElementType = ort.GetTensorElementType(output_info);
@@ -514,10 +521,13 @@ void populateOnnxRtOutputParams(Ort::CustomOpApi ort, OrtKernelContext * context
     else
     {
       printf("ERROR : Unsupported output tensor element type %d \n", outTensorElementType);
+      status = -1;
+      return status;
     }
     onnxRtParams->outputTensorData[j] = (void *)output;
     onnxRtParams->outputTensorElementType[j] = outTensorElementType;
   }
+  return status;
 }
 Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fused_nodes_and_graphs, // !!AL!! Changed from onnxruntime::Node* fused_nodes to <FusedNodeAndGraph> fused_nodes_and_graphs
                                                std::vector<NodeComputeInfo>& node_compute_funcs) {
@@ -551,6 +561,7 @@ Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fuse
 
     compute_info.create_state_func = [&](ComputeContext* context, FunctionState* state)
     {
+      int32_t status = 0;
       OnnxTIDLSubGraphParams *state_subGraph = (OnnxTIDLSubGraphParams*)malloc(sizeof(OnnxTIDLSubGraphParams));
 
       state_subGraph->serialNumber = subgraph_serial_number_;
@@ -558,42 +569,47 @@ Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fuse
       if(is_import_)
       {
         std::string * string_buf = model_protos_[context->node_name];
-        tidl_ops_->TIDL_createStateImportFunc(state_subGraph, string_buf, context->node_name);
+        status = tidl_ops_->TIDL_createStateImportFunc(state_subGraph, string_buf, context->node_name);
       }
       else
       {
-        tidl_ops_->TIDL_createStateInferFunc(state_subGraph, context->node_name);
+        status = tidl_ops_->TIDL_createStateInferFunc(state_subGraph, context->node_name);
       }
 
       subgraph_serial_number_++;
 
       *state = state_subGraph;
-
-      return 0;
+      return status;
     };
 
     compute_info.release_state_func = [&](FunctionState state)
     {
-       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
-       tidl_ops_->TIDL_releaseRtFunc(state_subGraph);
-       free(state);
+      int32_t status = 0;
+      OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
+      status = tidl_ops_->TIDL_releaseRtFunc(state_subGraph);
+      free(state);
     };
 
     compute_info.compute_func = [&](FunctionState state, const OrtApi* api, OrtKernelContext* context)
     {///* !!AL!! Changes OrtCustomApi* to OrtApi* */
+      int32_t status = 0;
       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
       Ort::CustomOpApi ort{*api};
       populateOnnxRtInputParams(ort, context, tidl_ops_, state_subGraph);
       if(is_import_)
       {
         std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
-        tidl_ops_->TIDL_computeImportFunc(state_subGraph, string_buf, graph.DomainToVersionMap().at(kOnnxDomain));
+        status = tidl_ops_->TIDL_computeImportFunc(state_subGraph, string_buf, graph.DomainToVersionMap().at(kOnnxDomain));
+        if(status != 0)
+          return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Compute Import Failed.");
       }
-      populateOnnxRtOutputParams(ort, context, tidl_ops_, state_subGraph);
-      tidl_ops_->TIDL_computeInvokeFunc(state_subGraph);
-
+      status = populateOnnxRtOutputParams(ort, context, tidl_ops_, state_subGraph);
+      if(status != 0)
+        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Populare OnnxRT Output Params Failed.");
+      status = tidl_ops_->TIDL_computeInvokeFunc(state_subGraph);
+      if(status != 0)
+        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Compute Invoke Failed.");
       return Status::OK();
-
     };
 
     compute_info.custom_func = [&](FunctionState state , char **node_name, void **node_data)
