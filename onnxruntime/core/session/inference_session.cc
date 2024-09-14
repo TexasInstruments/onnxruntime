@@ -2695,7 +2695,7 @@ std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark
       // auto node_index = node_indexs.get(0);
       // auto node_index = node_exec_plan.node_index;
       const auto& node = graph_viewer.GetNode(node_index);
-      if(node->OpType() == "TIDL_0")
+      if(node->OpType().find("TIDL_") != std::string::npos)
       {
         auto p_op_kernel = session_state_->GetKernel(node_index);
         const FunctionKernel * fun_op_kernel =  reinterpret_cast<const FunctionKernel*>(p_op_kernel);

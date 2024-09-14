@@ -440,7 +440,7 @@ static Status PartitionOnnxFormatModelImpl(Graph& graph, FuncManager& func_mgr,
         return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, type, " did not return correct number of compiled functions");
       }
       for (size_t j = 0, end = nodes_to_compile.size(); j < end; j++) {
-        if(nodes_to_compile[j]->OpType().find("TIDL_") != std::string::npos)
+        if(nodes_to_compile[j]->OpType().find("TIDL_") == std::string::npos)
         {
           node_compute_funcs[j].custom_func = NULL;
         }
