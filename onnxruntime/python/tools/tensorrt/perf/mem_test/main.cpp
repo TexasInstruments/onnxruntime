@@ -256,7 +256,9 @@ void ort_trt_run_with_default_options() {
   assert(input_tensor.IsTensor());
 
   // score model & input tensor, get back output tensor
-  auto output_tensors = session.Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, 1, output_node_names.data(), 1);
+  auto run_options = Ort::RunOptions();
+  run_options.SetRunLogVerbosityLevel(2);
+  auto output_tensors = session.Run(run_options, input_node_names.data(), &input_tensor, 1, output_node_names.data(), 1);
   assert(output_tensors.size() == 1 && output_tensors.front().IsTensor());
 
   // Get pointer to output tensor float values

@@ -73,11 +73,24 @@
 #include "core/framework/stream_execution_context.h"
 #endif
 
+#ifdef USE_TIDL
+#include "core/providers/tidl/tidl_execution_provider.h"
+#include "core/framework/func_kernel.h"
+#endif
+
 using namespace ONNX_NAMESPACE;
 using namespace onnxruntime::common;
 
 namespace onnxruntime {
 namespace {
+
+static inline void get_time_u64(uint64_t *t)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    *t = (uint64_t)ts.tv_sec * (uint64_t)1000000000ull + (uint64_t)ts.tv_nsec;
+}
+
 template <typename T>
 const T* GetDateFormatString();
 
@@ -460,7 +473,6 @@ InferenceSession::~InferenceSession() {
       LOGS(*session_logger_, ERROR) << "Unknown error during EndProfiling()";
     }
   }
-
 #ifdef ONNXRUNTIME_ENABLE_INSTRUMENT
   if (session_activity_started_)
     TraceLoggingWriteStop(session_activity, "OrtInferenceSessionActivity");
@@ -1989,6 +2001,24 @@ Status InferenceSession::Run(const RunOptions& run_options,
     tp = session_profiler_.Start();
   }
 
+// For TIDL
+#ifdef USE_TIDL
+  auto tidl_ep = execution_providers_.Get(kTidlExecutionProvider);
+  if(tidl_ep)
+  {
+    const TidlExecutionProvider* tidl_ep_ = reinterpret_cast<const TidlExecutionProvider*>(tidl_ep);
+    tidl_ep_->GetCustomMemStats(&run_start_ddr_read, &run_start_ddr_write);
+  }
+  else
+  {
+    run_start_ddr_read = 0; run_start_ddr_write = 0;
+  }
+#else
+  run_start_ddr_read = 0; run_start_ddr_write = 0;
+#endif
+
+  get_time_u64(&run_start_ts);
+
 #ifdef ONNXRUNTIME_ENABLE_INSTRUMENT
   TraceLoggingActivity<telemetry_provider_handle> ortrun_activity;
   ortrun_activity.SetRelatedActivity(session_activity);
@@ -2143,6 +2173,22 @@ Status InferenceSession::Run(const RunOptions& run_options,
   }
 #ifdef ONNXRUNTIME_ENABLE_INSTRUMENT
   TraceLoggingWriteStop(ortrun_activity, "OrtRun");
+#endif
+
+  get_time_u64(&run_end_ts);
+
+#ifdef USE_TIDL
+  if(tidl_ep)
+  {
+    const TidlExecutionProvider* tidl_ep_ = reinterpret_cast<const TidlExecutionProvider*>(tidl_ep);
+    tidl_ep_->GetCustomMemStats(&run_end_ddr_read, &run_end_ddr_write);
+  }
+  else
+  {
+    run_end_ddr_read = 0; run_end_ddr_write = 0;
+  }
+#else
+  run_end_ddr_read = 0; run_end_ddr_write = 0;
 #endif
 
   // As two inference runs (one for memory allocation and one for graph capturing)
@@ -2622,4 +2668,61 @@ IOBinding* SessionIOBinding::Get() {
   return binding_.get();
 }
 
+#ifdef USE_TIDL
+std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark_data(){
+  std::vector<std::pair<std::string, uint64_t>> res;
+  std::vector<std::pair<std::string, void *>> c_data;
+  /* get the run duration */
+  res.push_back(std::make_pair<std::string, uint64_t>("ts:run_start", uint64_t(run_start_ts)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ts:run_end", uint64_t(run_end_ts)));
+  /* get the ddr bw numbers */
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:read_start", uint64_t(run_start_ddr_read)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:read_end", uint64_t(run_end_ddr_read)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:write_start", uint64_t(run_start_ddr_write)));
+  res.push_back(std::make_pair<std::string, uint64_t>("ddr:write_end", uint64_t(run_end_ddr_write)));
+  char *node_name;
+  void *node_data;
+  const SequentialExecutionPlan& seq_exec_plan = *session_state_->GetExecutionPlan();
+  const auto& exec_plan_vec = seq_exec_plan.execution_plan;
+  const auto& graph_viewer= session_state_->GetGraphViewer();
+  const Graph& node_graph = graph_viewer.GetGraph();
+  const std::string& name_ = node_graph.Name();
+  const std::vector<NodeIndex>& node_indexs = graph_viewer.GetNodesInTopologicalOrder();
+  Status status;
+
+    for (const auto& node_index : node_indexs)
+    {
+      // auto node_index = node_indexs.get(0);
+      // auto node_index = node_exec_plan.node_index;
+      const auto& node = graph_viewer.GetNode(node_index);
+      if(node->OpType() == "TIDL_0")
+      {
+        auto p_op_kernel = session_state_->GetKernel(node_index);
+        const FunctionKernel * fun_op_kernel =  reinterpret_cast<const FunctionKernel*>(p_op_kernel);
+        status = fun_op_kernel->Custom(&node_name, &node_data);
+        if(status.IsOK())
+        {
+          c_data.push_back(std::make_pair(std::string(node_name), node_data));
+        }
+      }
+    }
+
+  if(c_data.size()) {
+      for (auto e : c_data) {
+          std::string prefix = "ts:subgraph_" + e.first + "_";
+          std::string annots[] = {
+              "copy_in_start", "copy_in_end",
+              "proc_start", "proc_end",
+              "copy_out_start", "copy_out_end"
+          };
+          std::vector<uint64_t> *s = static_cast<std::vector<uint64_t>*>(e.second);
+          int index = 0;
+          for(auto it = s->begin(); it != s->end(); it++, index++)
+              res.push_back(std::make_pair<std::string, uint64_t>(prefix + annots[index], uint64_t(*it)));
+          delete s;
+      }
+  }
+  return res;
+}
+#endif
 }  // namespace onnxruntime

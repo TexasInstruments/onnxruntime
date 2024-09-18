@@ -382,7 +382,6 @@ static Status PartitionOnnxFormatModelImpl(Graph& graph, FuncManager& func_mgr,
   const std::string& type = current_ep.Type();
   auto fusion_style = current_ep.GetFusionStyle();
   std::vector<Node*> nodes_to_compile;
-
   // The fused node may map to an existing kernel, so it is fused but doesn't need to be compiled
   // But we still need to finalize the graph fusion for those nodes.
   std::vector<Node*> nodes_to_complete_fuse;
@@ -440,12 +439,13 @@ static Status PartitionOnnxFormatModelImpl(Graph& graph, FuncManager& func_mgr,
       if (node_compute_funcs.size() != nodes_to_compile.size()) {
         return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, type, " did not return correct number of compiled functions");
       }
-
       for (size_t j = 0, end = nodes_to_compile.size(); j < end; j++) {
+        if(nodes_to_compile[j]->OpType().find("TIDL_") != std::string::npos)
+        {
+          node_compute_funcs[j].custom_func = NULL;
+        }
         auto* node = nodes_to_compile[j];
-
         ORT_RETURN_IF_ERROR(func_mgr.AddFuncInfo(node->Name(), std::move(node_compute_funcs[j])));
-
         const auto& cur_capability = capabilities_to_compile[j];
         const IndexedSubGraph& indexed_sub_graph = *cur_capability->sub_graph;
         const IndexedSubGraph::MetaDef& metadef = *indexed_sub_graph.GetMetaDef();
@@ -543,9 +543,22 @@ static Status PartitionOnnxFormatModel(const PartitionParams& partition_params, 
   auto& fused_node_unique_id = partition_params.fused_node_unique_id.get();
   const auto& transform_layout_function = partition_params.transform_layout_function;
 
+  for (const auto& ep : execution_providers) {
+    if ((*ep).Type().compare("TIDLExecutionProvider") == 0)
+    {
+      ORT_RETURN_IF_ERROR(PartitionOnnxFormatModelImpl(graph, func_mgr, kernel_registry_manager,
+                                                      fused_kernel_registry, *ep, mode, fused_node_unique_id,
+                                                      transform_layout_function, partition_params.debug_graph_fn));
+    }
+  }
+
   do {
     // process full graph with each EP
     for (const auto& ep : execution_providers) {
+      if ((*ep).Type().compare("TIDLExecutionProvider") == 0)
+      {
+        continue;
+      }
       ORT_RETURN_IF_ERROR(PartitionOnnxFormatModelImpl(graph, func_mgr, kernel_registry_manager,
                                                        fused_kernel_registry, *ep, mode, fused_node_unique_id,
                                                        transform_layout_function,

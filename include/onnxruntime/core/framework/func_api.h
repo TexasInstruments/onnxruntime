@@ -24,4 +24,8 @@ using CreateFunctionStateC = int (*)(ComputeContext*, FunctionState*);
 using ComputeFuncC = common::Status (*)(FunctionState, const OrtApi*, OrtKernelContext*);
 // release the function state.
 using DestroyFunctionStateC = void (*)(FunctionState);
+
+// Custom Data re interpret
+using CustomFuncC = Status (*)(FunctionState, char **node_name, void **node_data);
+
 }  // namespace onnxruntime

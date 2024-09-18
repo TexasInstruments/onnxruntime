@@ -300,6 +300,28 @@ MLDataType NumpyTypeToOnnxRuntimeTensorType(int numpy_type) {
   }
 }
 
+const DataTypeImpl* StringToOnnxRuntimeType(const std::string& string_type) {
+  static std::map<std::string, MLDataType> type_map{
+      {"bool", DataTypeImpl::GetType<bool>()},
+      {"float", DataTypeImpl::GetType<float>()},
+      {"float16", DataTypeImpl::GetType<onnxruntime::MLFloat16>()},
+      {"double", DataTypeImpl::GetType<double>()},
+      {"int8", DataTypeImpl::GetType<int8_t>()},
+      {"uint8", DataTypeImpl::GetType<uint8_t>()},
+      {"int16", DataTypeImpl::GetType<int16_t>()},
+      {"uint16", DataTypeImpl::GetType<uint16_t>()},
+      {"int32", DataTypeImpl::GetType<int32_t>()},
+      {"uint32", DataTypeImpl::GetType<uint32_t>()},
+      {"int64", DataTypeImpl::GetType<int64_t>()},
+      {"uint64", DataTypeImpl::GetType<uint64_t>()},
+      {"string", DataTypeImpl::GetType<std::string>()},
+  };
+  const auto it = type_map.find(string_type);
+  if (it == type_map.end())
+    throw std::runtime_error("No corresponding Numpy type for Tensor Type.");
+  return it->second;
+}
+
 // This is a one time use, ad-hoc allocator that allows Tensors to take ownership of
 // python array objects and use the underlying memory directly and
 // properly deallocated them when they are done.

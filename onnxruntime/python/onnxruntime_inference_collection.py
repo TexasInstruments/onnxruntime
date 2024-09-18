@@ -264,7 +264,11 @@ class Session:
                 # Fallback only once.
                 self.disable_fallback()
                 return invoke(self._sess, output_names, input_dict_ort_values, run_options)
-            raise
+            else:
+                raise
+
+    def get_TI_benchmark_data(self):
+        return self._sess.get_TI_benchmark_data()
 
     def end_profiling(self):
         """

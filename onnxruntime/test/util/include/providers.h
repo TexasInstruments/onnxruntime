@@ -7,6 +7,9 @@
 #ifdef USE_DNNL
 #include "core/providers/dnnl/dnnl_provider_factory.h"
 #endif
+#ifdef USE_TIDL
+#include "core/providers/tidl/tidl_provider_factory.h"
+#endif
 #ifdef USE_TVM
 #include "core/providers/tvm/tvm_provider_factory.h"
 #endif

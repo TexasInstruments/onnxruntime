@@ -132,6 +132,9 @@ endif()
 if(onnxruntime_USE_WINML)
   set(PROVIDERS_WINML onnxruntime_providers_winml)
 endif()
+if(onnxruntime_USE_TIDL)
+  set(PROVIDERS_TIDL onnxruntime_providers_tidl)
+endif()
 if(onnxruntime_USE_ACL)
   set(PROVIDERS_ACL onnxruntime_providers_acl)
 endif()
@@ -1355,6 +1358,23 @@ if (onnxruntime_USE_MIGRAPHX)
           LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
           RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
+endif()
+
+if (onnxruntime_USE_TIDL)
+  add_definitions(-DUSE_TIDL=1)
+  file(GLOB_RECURSE onnxruntime_providers_tidl_cc_srcs
+    "${ONNXRUNTIME_ROOT}/core/providers/tidl/*.h"
+    "${ONNXRUNTIME_ROOT}/core/providers/tidl/*.cc"
+  )
+
+  source_group(TREE ${ONNXRUNTIME_ROOT}/core FILES ${onnxruntime_providers_tidl_cc_srcs})
+  add_library(onnxruntime_providers_tidl ${onnxruntime_providers_tidl_cc_srcs})
+  onnxruntime_add_include_to_target(onnxruntime_providers_tidl onnxruntime_common onnxruntime_framework onnx onnx_proto protobuf::libprotobuf)
+  add_dependencies(onnxruntime_providers_tidl ${onnxruntime_EXTERNAL_DEPENDENCIES})
+  # set_target_properties(onnxruntime_providers_tidl PROPERTIES FOLDER "ONNXRuntime")
+  target_include_directories(onnxruntime_providers_tidl PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/_deps/google_nsync-src/public/" "${CMAKE_CURRENT_BINARY_DIR}/_deps/mp11-src/include/" "${CMAKE_CURRENT_BINARY_DIR}/_deps/google_nsync-src/public/" "${CMAKE_CURRENT_BINARY_DIR}/_deps/mp11-src/include/" ${ONNXRUNTIME_ROOT} ${eigen_INCLUDE_DIRS} ${TIDL_RT_INCLUDE_DIR} ${TIDL_IT_INCLUDE_DIR} ${TIDL_INCLUDE_DIR} ${TIDL_IVISION_INCLUDE_DIR} ${TIDL_ONNX_INFER_INCLUDE_DIR} ${TIDL_COMMON_DIR})
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/../include/onnxruntime/core/providers/tidl  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/onnxruntime/core/providers)
+  set_target_properties(onnxruntime_providers_tidl PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 
 if (onnxruntime_USE_ACL)

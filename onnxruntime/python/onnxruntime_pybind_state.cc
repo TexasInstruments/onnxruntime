@@ -41,10 +41,6 @@
 // (This static var is referenced in GetCudaToHostMemCpyFunction())
 const OrtDevice::DeviceType OrtDevice::GPU;
 
-namespace onnxruntime {
-
-}  // namespace onnxruntime
-
 #if defined(_MSC_VER)
 #pragma warning(disable : 4267 4996 4503 4003)
 #endif  // _MSC_VER
@@ -54,6 +50,33 @@ namespace onnxruntime {
 #if defined(_MSC_VER)
 #pragma warning(disable : 4267 4996 4503 4003)
 #endif  // _MSC_VER
+
+// removed commented out includes for TIIE
+#ifdef USE_TIIE
+#include <fs_utils.h>
+#include <memstreambuf.h>
+#include <common.h>
+#include <experimental/filesystem>
+#include "remote/onnx_messages.h"
+#endif
+
+#ifdef USE_TIDL
+using TIDLProviderOptions = std::vector<std::pair<std::string,std::string>>;
+#include "core/providers/tidl/tidl_provider_factory.h"
+#endif
+
+#if USE_TIDL
+#define BACKEND_TIDL "-TIDL"
+//#include "core/providers/tidl/tidl_execution_provider.h"
+#else
+#define BACKEND_TIDL ""
+#endif
+
+namespace onnxruntime {
+#ifdef USE_TIDL
+  std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(const std::string& provider_type, const TIDLProviderOptions& options); //New change
+#endif
+}  // namespace onnxruntime
 
 namespace onnxruntime {
 namespace python {
@@ -71,6 +94,12 @@ using namespace onnxruntime::logging;
 static Env& platform_env = Env::Default();
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push)
+#endif
+
+#ifdef USE_TIIE
+PyInferenceSession::~PyInferenceSession() {
+    roundtrip(onnx_destroy_session, remote_id);
+}
 #endif
 
 template <typename T>
@@ -685,7 +714,22 @@ std::unique_ptr<IExecutionProvider> CreateExecutionProviderInstance(
 
     return onnxruntime::DnnlProviderFactoryCreator::Create(&dnnl_options)->CreateProvider();
 #endif
-  } else if (type == kOpenVINOExecutionProvider) {
+    }
+    else if (type == kTidlExecutionProvider || type == kTidlCompilationProvider) {
+#ifdef USE_TIDL
+      const auto it = provider_options_map.find(type);
+      TIDLProviderOptions tidl_options;
+      if(it != provider_options_map.end()) {
+        auto i_options = it->second;
+        for (auto elem = i_options.begin(); elem != i_options.end(); elem++)
+          tidl_options.push_back(std::make_pair(elem->first, elem->second));
+      }
+      return (onnxruntime::CreateExecutionProviderFactory_Tidl(type, tidl_options)->CreateProvider());
+
+      // RegisterExecutionProvider(sess, *onnxruntime::CreateExecutionProviderFactory_Tidl(type, tidl_options));
+#endif
+    }
+    else if (type == kOpenVINOExecutionProvider) {
 #ifdef USE_OPENVINO
     OrtOpenVINOProviderOptions params;
     params.device_type = openvino_device_type.c_str();
@@ -925,16 +969,67 @@ static void RegisterCustomOpDomains(PyInferenceSession* sess, const PySessionOpt
 }
 #endif
 
+#ifdef USE_TIIE
+void InitializeSession(PyInferenceSession* pysess,
+                       ExecutionProviderRegistrationFn ep_registration_fn,
+                       const std::vector<std::string>& provider_types,
+                       const ProviderOptionsVector& provider_options,
+                       const std::unordered_set<std::string>& disabled_optimizer_names) {
+#else
 void InitializeSession(InferenceSession* sess,
                        ExecutionProviderRegistrationFn ep_registration_fn,
                        const std::vector<std::string>& provider_types,
                        const ProviderOptionsVector& provider_options,
                        const std::unordered_set<std::string>& disabled_optimizer_names) {
+#endif
   ProviderOptionsMap provider_options_map;
   GenerateProviderOptionsMap(provider_types, provider_options, provider_options_map);
 
-  ep_registration_fn(sess, provider_types, provider_options_map);
+#ifdef USE_TIIE
+  InferenceSession *sess = pysess->GetSessionHandle();
 
+  if (provider_types.empty()) {
+    // use default registration priority.
+    roundtrip(onnx_initialize_cpu_session, pysess->remote_id);
+    if(resp.status())
+        throw std::runtime_error("Transport error");
+  } else if(std::find(provider_types.begin(), provider_types.end(), kTidlCompilationProvider) != provider_types.end()) {
+    RegisterExecutionProviders(sess, provider_types, provider_options_map);
+    pysess->is_remote = false;
+  } else if(std::find(provider_types.begin(), provider_types.end(), kTidlExecutionProvider) != provider_types.end()) {
+    std::vector<std::pair<std::string, std::string>> options;
+    std::string user_artifacts_folder;
+
+    const auto it = provider_options_map.find(kTidlExecutionProvider);
+    if(it != provider_options_map.end()) {
+      for (auto elem = it->second.begin(); elem != it->second.end(); elem++)
+      {
+          std::string option_key = elem->first;
+          std::string option_value = elem->second;
+
+          if (option_key == "artifacts_folder") {
+              user_artifacts_folder = std::experimental::filesystem::canonical(option_value);
+              option_value = std::string(BASE) + "/" + user_artifacts_folder;
+          }
+
+          /* create the option list from user supplied options, no judgements */
+          options.push_back(std::make_pair<std::string, std::string>(std::move(option_key), std::move(option_value)));
+      }
+    }
+
+    if (user_artifacts_folder.empty())
+      throw std::runtime_error("artifacts_folder must be provided");
+    send_dir(user_artifacts_folder.c_str());
+    roundtrip(onnx_initialize_tidl_session, pysess->remote_id, options);
+    if(resp.status())
+        throw std::runtime_error("Transport error");
+  } else {
+    roundtrip(onnx_initialize_cpu_session, pysess->remote_id);
+    if(resp.status())
+        throw std::runtime_error("Transport error");
+  }
+#else
+  ep_registration_fn(sess, provider_types, provider_options_map);
 #if !defined(ORT_MINIMAL_BUILD) || defined(ORT_EXTENDED_MINIMAL_BUILD)
   if (!disabled_optimizer_names.empty()) {
     OrtPybindThrowIfError(sess->FilterEnabledOptimizers({disabled_optimizer_names.cbegin(), disabled_optimizer_names.cend()}));
@@ -942,7 +1037,7 @@ void InitializeSession(InferenceSession* sess,
 #else
   ORT_UNUSED_PARAMETER(disabled_optimizer_names);
 #endif
-
+#endif
   OrtPybindThrowIfError(sess->Initialize());
 }
 
@@ -1096,6 +1191,9 @@ void addGlobalMethods(py::module& m) {
     arena_extend_strategy = strategy;
   });
 #endif
+// #ifdef USE_TIDL
+//             onnxruntime::CreateExecutionProviderFactory_Tidl(),
+// #endif
 
 #ifdef ENABLE_ATEN
   m.def("register_aten_op_executor",
@@ -1110,6 +1208,67 @@ void addGlobalMethods(py::module& m) {
         });
 #endif
 }
+
+#ifdef USE_TIIE
+using TIIETensor = std::tuple<std::string,std::vector<uint8_t>,std::string,std::vector<int64_t>>;
+static std::vector<py::object> __run_remote(PyInferenceSession *sess,
+        std::vector<std::string> output_names,
+        std::map<std::string, py::object> pyfeeds,
+        RunOptions *run_options = nullptr) {
+    std::vector<TIIETensor> tiie_feeds;
+    std::vector<py::object> rfetch;
+    for (auto _ : pyfeeds) {
+        OrtValue ml_value;
+        auto px = sess->GetSessionHandle()->GetModelInputs();
+        if (!px.first.IsOK() || !px.second)
+            throw std::runtime_error("Either failed to get model inputs from the session object or the input def list was null");
+        CreateGenericMLValue(px.second, GetAllocator(), _.first, _.second, &ml_value);
+        ThrowIfPyErrOccured();
+        if(!ml_value.IsTensor())
+            throw std::runtime_error("Input is not a tensor");
+        const onnxruntime::Tensor& t = ml_value.Get<onnxruntime::Tensor>();
+        const uint8_t *data = static_cast<const uint8_t *>(t.DataRaw());
+        size_t len;
+        if (!IAllocator::CalcMemSizeForArray(t.DataType()->Size(), t.Shape().Size(), &len))
+            throw std::runtime_error("length overflow");
+
+        std::string dataType = DataTypeImpl::ToString(t.DataType());
+        // recheck the next 2 lines for valid conversion from gsl::span to std::vector
+        std::vector<int64_t> dimVector;
+        std::copy(t.Shape().GetDims().begin(), t.Shape().GetDims().end(), std::back_inserter(dimVector));
+
+        TIIETensor this_feed = std::make_tuple(
+                _.first, std::vector<uint8_t>(data, data + len),
+                dataType,
+                dimVector);
+        tiie_feeds.push_back(this_feed);
+    }
+    roundtrip(onnx_run_session, sess->remote_id, tiie_feeds, output_names);
+    if(resp.status())
+        throw std::runtime_error("Transport error");
+    for(auto _ : resp.out_data()) {
+        py::object obj;
+        std::vector<npy_intp> npy_dims;
+        TensorShape shape(std::get<3>(_));
+
+        for (size_t n = 0; n < shape.NumDimensions(); ++n) {
+            npy_dims.push_back(shape[n]);
+        }
+
+        int numpy_type = OnnxRuntimeTensorToNumpyType(StringToOnnxRuntimeType(std::get<2>(_)));
+        obj = py::reinterpret_steal<py::object>(PyArray_SimpleNew(
+                    shape.NumDimensions(), npy_dims.data(), numpy_type));
+        ThrowIfPyErrOccured();
+
+        void* out_ptr = static_cast<void*>(
+                PyArray_DATA(reinterpret_cast<PyArrayObject*>(obj.ptr())));
+        memcpy(out_ptr, std::get<1>(_).data(), std::get<1>(_).size());
+
+        rfetch.push_back(obj);
+    }
+    return rfetch;
+}
+#endif
 
 void addObjectMethods(py::module& m, ExecutionProviderRegistrationFn ep_registration_fn) {
   py::enum_<GraphOptimizationLevel>(m, "GraphOptimizationLevel")
@@ -1582,6 +1741,24 @@ including arg name, arg type (contains both type and shape).)pbdoc")
           } else {
             OrtPybindThrowIfError(sess->GetSessionHandle()->Load(arg.data(), arg.size()));
           }
+
+
+#ifdef USE_TIIE
+          if (is_arg_file_name) {
+            std::string canonical_path = std::experimental::filesystem::canonical(arg);
+            send_file(canonical_path.c_str());
+            roundtrip(onnx_session_from_file, canonical_path);
+            if(resp.status())
+                throw std::runtime_error("Transport error");
+            sess->remote_id = resp.id();
+          } else {
+            /* TODO: progress bar */
+            roundtrip(onnx_session_from_buffer, std::vector<uint8_t>(arg.data(), arg.data() + arg.size()));
+            if(resp.status())
+                throw std::runtime_error("Transport error");
+            sess->remote_id = resp.id();
+          }
+#endif
         }
 
         return sess;
@@ -1592,11 +1769,19 @@ including arg name, arg type (contains both type and shape).)pbdoc")
                                const std::vector<std::string>& provider_types = {},
                                const ProviderOptionsVector& provider_options = {},
                                const std::unordered_set<std::string>& disabled_optimizer_names = {}) {
+#ifdef USE_TIIE
+            InitializeSession(sess,
+                              ep_registration_fn,
+                              provider_types,
+                              provider_options,
+                              disabled_optimizer_names);  // changed function definition to match
+#else
             InitializeSession(sess->GetSessionHandle(),
                               ep_registration_fn,
                               provider_types,
                               provider_options,
                               disabled_optimizer_names);
+#endif
           },
           R"pbdoc(Load a model saved in ONNX or ORT format.)pbdoc")
       .def("run",
@@ -1604,6 +1789,10 @@ including arg name, arg type (contains both type and shape).)pbdoc")
               std::map<std::string, py::object> pyfeeds, RunOptions* run_options = nullptr)
                -> std::vector<py::object> {
              NameMLValMap feeds;
+#ifdef USE_TIIE
+             if(sess->is_remote)
+                 return __run_remote(sess, output_names, pyfeeds, run_options);
+#endif
              for (auto feed : pyfeeds) {
                // No need to process 'None's sent in by the user
                // to feed Optional inputs in the graph.
@@ -1653,6 +1842,30 @@ including arg name, arg type (contains both type and shape).)pbdoc")
              }
              return rfetch;
            })
+
+#ifdef USE_TIDL
+      .def("get_TI_benchmark_data", [](PyInferenceSession* sess) -> py::dict {
+#ifdef USE_TIIE
+        if(sess->is_remote) {
+            roundtrip(onnx_get_TI_benchmark_data_session, sess->remote_id);
+            if(resp.status())
+                throw std::runtime_error("Transport error");
+            py::dict benchmark_dict;
+            for (auto e : resp.benchmark_data())
+                benchmark_dict[e.first.c_str()] = e.second;
+            return benchmark_dict;
+        }
+#endif
+        std::vector<std::pair<std::string, uint64_t>> res =  sess->GetSessionHandle()->get_TI_benchmark_data();
+        py::dict benchmark_dict;
+        for (auto e : res)
+        {
+            benchmark_dict[e.first.c_str()] = e.second;
+        }
+        return benchmark_dict;
+      })
+#endif
+
       /// This method accepts a dictionary of feeds (name -> OrtValue) and the list of output_names
       /// and returns a list of python objects representing OrtValues. Each name may represent either
       /// a Tensor, SparseTensor or a TensorSequence.

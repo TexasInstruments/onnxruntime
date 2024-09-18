@@ -4,10 +4,19 @@
 include(pybind11)
 
 # ---[ Python + Numpy
-set(onnxruntime_pybind_srcs_pattern
-    "${ONNXRUNTIME_ROOT}/python/*.cc"
-    "${ONNXRUNTIME_ROOT}/python/*.h"
-)
+if (onnxruntime_USE_TIIE)
+  set(onnxruntime_pybind_srcs_pattern
+      "${ONNXRUNTIME_ROOT}/python/*.cc"
+      "${ONNXRUNTIME_ROOT}/python/*.h"
+      "${ONNXRUNTIME_ROOT}/remote/*.cc"
+      "${ONNXRUNTIME_ROOT}/remote/*.h"
+  )
+else()
+  set(onnxruntime_pybind_srcs_pattern
+      "${ONNXRUNTIME_ROOT}/python/*.cc"
+      "${ONNXRUNTIME_ROOT}/python/*.h"
+  )
+endif()
 
 if (onnxruntime_ENABLE_TRAINING)
   list(APPEND onnxruntime_pybind_srcs_pattern
@@ -19,6 +28,8 @@ endif()
 file(GLOB onnxruntime_pybind_srcs CONFIGURE_DEPENDS
   ${onnxruntime_pybind_srcs_pattern}
   )
+
+list(REMOVE_ITEM onnxruntime_pybind_srcs "${ONNXRUNTIME_ROOT}/remote/onnx_registry.cc")
 
 if(NOT onnxruntime_PYBIND_EXPORT_OPSCHEMA)
   list(REMOVE_ITEM onnxruntime_pybind_srcs  ${ONNXRUNTIME_ROOT}/python/onnxruntime_pybind_schema.cc)
@@ -115,6 +126,8 @@ if (onnxruntime_USE_NCCL)
   target_include_directories(onnxruntime_pybind11_state PRIVATE ${NCCL_INCLUDE_DIRS})
 endif()
 
+target_include_directories(onnxruntime_pybind11_state PRIVATE ${onnxruntime_TIIE_HOME})
+
 if(APPLE)
   set(ONNXRUNTIME_SO_LINK_FLAG "-Xlinker -exported_symbols_list ${ONNXRUNTIME_ROOT}/python/exported_symbols.lst")
 elseif(UNIX)
@@ -174,6 +187,7 @@ target_link_libraries(onnxruntime_pybind11_state PRIVATE
     onnxruntime_session
     ${onnxruntime_libs}
     ${PROVIDERS_TVM}
+    ${PROVIDERS_TIDL}
     ${PROVIDERS_VITISAI}
     ${PROVIDERS_NNAPI}
     ${PROVIDERS_XNNPACK}
@@ -197,6 +211,32 @@ target_link_libraries(onnxruntime_pybind11_state PRIVATE
     onnxruntime_flatbuffers
     ${pybind11_lib}
 )
+# set(onnxruntime_pybind11_state_libs
+#     onnxruntime_session
+#     ${onnxruntime_libs}
+#     ${PROVIDERS_CUDA}
+#     ${PROVIDERS_MIGRAPHX}
+#     ${PROVIDERS_NUPHAR}
+#     ${PROVIDERS_TIDL}
+#     ${PROVIDERS_VITISAI}
+#     ${PROVIDERS_NNAPI}
+#     ${PROVIDERS_RKNPU}
+#     ${PROVIDERS_DML}
+#     ${PROVIDERS_ACL}
+#     ${PROVIDERS_ARMNN}
+#     ${PROVIDERS_ROCM}
+#     onnxruntime_optimizer
+#     onnxruntime_providers
+#     onnxruntime_util
+#     ${onnxruntime_tvm_libs}
+#     onnxruntime_framework
+#     onnxruntime_util
+#     onnxruntime_graph
+#     onnxruntime_common
+#     onnxruntime_mlas
+#     onnxruntime_flatbuffers
+#     ${pybind11_lib}
+# )
 
 if (onnxruntime_ENABLE_LANGUAGE_INTEROP_OPS)
   target_link_libraries(onnxruntime_pybind11_state PRIVATE onnxruntime_language_interop onnxruntime_pyop)
@@ -264,6 +304,11 @@ if (MSVC)
   set_target_properties(onnxruntime_pybind11_state PROPERTIES SUFFIX ".pyd")
 else()
   set_target_properties(onnxruntime_pybind11_state PROPERTIES SUFFIX ".so")
+endif()
+
+if (onnxruntime_USE_TIIE)
+  target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-lstdc++fs")
+  target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-L${onnxruntime_TIIE_HOME} -lti_inference_client")
 endif()
 
 # Generate version_info.py in Windows build.
