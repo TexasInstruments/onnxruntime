@@ -1,0 +1,25 @@
+# ONNX Runtime Classification Demo
+
+Basic image classification demo using ONNX runtime. Currently the only working execution
+provider is DNNL, and the only tested model is Squeezenet. Image size is hard-coded to
+224x224x3, layout is hardcoded to NCHW, and the only supported image format is .png.
+
+## Usage
+```
+Usage: classification_demo <image_path> <model_path> <labels_path> [-t] [-h]
+Options:
+    image_path	Path to the input image to classify
+    model_path	Path to the ONNX model
+    labels_path	Path to the labels txt file
+    -t		Use the TIDL execution provider (default DNNL)
+    -h		Display this help text
+```
+
+## Building
+```sh
+# Prepare the environment with libs etc
+source ./setenv.sh
+
+# Build the demo, bins will be in the ./bin directory
+make
+```

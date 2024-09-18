@@ -1,0 +1,54 @@
+header : ONNX_MESSAGES
+
+onnx_initialize_cpu_session:
+    resp:
+    - status: int32_t
+    req:
+    - id: uint32_t
+
+onnx_initialize_tidl_session:
+    resp:
+    - status: int32_t
+    req:
+    - __skip_serialize__
+    - id: uint32_t
+    - options: std::vector<std::pair<std::string, std::string>>
+
+onnx_run_session:
+    resp:
+    - __skip_serialize__
+    - status: int32_t
+    - out_data: std::vector<std::tuple<std::string,std::vector<uint8_t>,std::string,std::vector<int64_t>>>
+    req:
+    - __skip_serialize__
+    - id: uint32_t
+    - in_data: std::vector<std::tuple<std::string,std::vector<uint8_t>,std::string,std::vector<int64_t>>>
+    - out_names: std::vector<std::string>
+
+onnx_session_from_file:
+    resp:
+    - status: int32_t
+    - id: uint32_t
+    req:
+    - path: std::string
+
+onnx_session_from_buffer:
+    resp:
+    - status: int32_t
+    - id: uint32_t
+    req:
+    - buffer: std::vector<uint8_t>
+
+onnx_destroy_session:
+    resp:
+    - status: int32_t
+    req:
+    - id: uint32_t
+
+onnx_get_TI_benchmark_data_session:
+    resp:
+    - __skip_serialize__
+    - status: int32_t
+    - benchmark_data: std::vector<std::pair<std::string, uint64_t>>
+    req:
+    - id: uint32_t

@@ -4,10 +4,19 @@
 
 
 # ---[ Python + Numpy
-set(onnxruntime_pybind_srcs_pattern
-    "${ONNXRUNTIME_ROOT}/python/*.cc"
-    "${ONNXRUNTIME_ROOT}/python/*.h"
-)
+if (onnxruntime_USE_TIIE)
+  set(onnxruntime_pybind_srcs_pattern
+      "${ONNXRUNTIME_ROOT}/python/*.cc"
+      "${ONNXRUNTIME_ROOT}/python/*.h"
+      "${ONNXRUNTIME_ROOT}/remote/*.cc"
+      "${ONNXRUNTIME_ROOT}/remote/*.h"
+  )
+else()
+  set(onnxruntime_pybind_srcs_pattern
+      "${ONNXRUNTIME_ROOT}/python/*.cc"
+      "${ONNXRUNTIME_ROOT}/python/*.h"
+  )
+endif()
 
 if (onnxruntime_ENABLE_TRAINING)
   list(APPEND onnxruntime_pybind_srcs_pattern
@@ -19,6 +28,8 @@ endif()
 file(GLOB onnxruntime_pybind_srcs CONFIGURE_DEPENDS
   ${onnxruntime_pybind_srcs_pattern}
   )
+
+list(REMOVE_ITEM onnxruntime_pybind_srcs "${ONNXRUNTIME_ROOT}/remote/onnx_registry.cc")
 
 if(onnxruntime_ENABLE_TRAINING)
   list(REMOVE_ITEM onnxruntime_pybind_srcs  ${ONNXRUNTIME_ROOT}/python/onnxruntime_pybind_module.cc)
@@ -112,6 +123,8 @@ if (onnxruntime_USE_NCCL)
   target_include_directories(onnxruntime_pybind11_state PRIVATE ${NCCL_INCLUDE_DIRS})
 endif()
 
+target_include_directories(onnxruntime_pybind11_state PRIVATE ${onnxruntime_TIIE_HOME})
+
 if(APPLE)
   target_link_options(onnxruntime_pybind11_state PRIVATE  "LINKER:-exported_symbols_list,${ONNXRUNTIME_ROOT}/python/exported_symbols.lst")
 elseif(UNIX)
@@ -173,6 +186,7 @@ if (onnxruntime_ENABLE_LAZY_TENSOR)
 endif()
 
 set(onnxruntime_pybind11_state_static_providers
+    ${PROVIDERS_TIDL}
     ${PROVIDERS_NNAPI}
     ${PROVIDERS_VSINPU}
     ${PROVIDERS_XNNPACK}
@@ -275,6 +289,11 @@ if (MSVC)
   set_target_properties(onnxruntime_pybind11_state PROPERTIES SUFFIX ".pyd")
 else()
   set_target_properties(onnxruntime_pybind11_state PROPERTIES SUFFIX ".so")
+endif()
+
+if (onnxruntime_USE_TIIE)
+  target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-lstdc++fs")
+  target_link_libraries(onnxruntime_pybind11_state PRIVATE ${onnxruntime_pybind11_state_libs} "-L${onnxruntime_TIIE_HOME} -lti_inference_client")
 endif()
 
 # Generate version_info.py in Windows build.

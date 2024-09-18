@@ -439,6 +439,9 @@ def generate_build_tree(
         "-Donnxruntime_BUILD_OBJC=" + ("ON" if args.build_objc else "OFF"),
         "-Donnxruntime_BUILD_SHARED_LIB=" + ("ON" if args.build_shared_lib else "OFF"),
         "-Donnxruntime_BUILD_APPLE_FRAMEWORK=" + ("ON" if args.build_apple_framework else "OFF"),
+        "-Donnxruntime_USE_TIDL=" + ("ON" if args.use_tidl else "OFF"),
+        "-Donnxruntime_USE_TIIE=" + ("ON" if args.use_tiie else "OFF"),
+        "-Donnxruntime_TIIE_HOME=" + (args.ti_inference_engine_path if args.use_tiie else ""),
         "-Donnxruntime_USE_DNNL=" + ("ON" if args.use_dnnl else "OFF"),
         "-Donnxruntime_USE_NNAPI_BUILTIN=" + ("ON" if args.use_nnapi else "OFF"),
         "-Donnxruntime_USE_VSINPU=" + ("ON" if args.use_vsinpu else "OFF"),
@@ -1916,6 +1919,8 @@ def build_python_wheel(
     use_dnnl,
     use_tensorrt,
     use_openvino,
+    use_tidl,
+    use_tiie,
     use_vitisai,
     use_acl,
     use_armnn,
@@ -1969,6 +1974,8 @@ def build_python_wheel(
             args.append("--use_openvino")
         elif use_dnnl:
             args.append("--use_dnnl")
+        elif use_tidl or use_tiie:
+            args.append('--use_tidl')
         elif use_vitisai:
             args.append("--use_vitisai")
         elif use_acl:
@@ -2605,6 +2612,8 @@ def main():
                 args.use_dnnl,
                 args.use_tensorrt,
                 args.use_openvino,
+                args.use_tidl,
+                args.use_tiie,
                 args.use_vitisai,
                 args.use_acl,
                 args.use_armnn,

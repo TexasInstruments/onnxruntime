@@ -1,0 +1,17 @@
+# TIDL Integration to ONNX Runtime
+
+## Execution Provider
+The core of the execution proivder can be found [HERE](https://bitbucket.itg.ti.com/users/a0226847/repos/onnxruntime/browse/onnxruntime/core/providers/tidl). Checkout [THIS REPO DIFF](https://bitbucket.itg.ti.com/users/a0226847/repos/onnxruntime/compare/diff?targetBranch=refs%2Fheads%2Fmaster&sourceBranch=refs%2Fheads%2Ftidl_xp&targetRepoId=33757) for a full description of what files need to be changed to add TIDL support to ONNX Runtime.
+
+This execution provider is heavily based on the DNNL execution provider, which relies on Intel's library which gets built and linked from here: `ORT_HOME/build/Linux/RelWithDebInfo/dnnl/install`. This gets cloned/built during the long and complicated Cmake build process, I would imagine something similar will need to be added for TIDL libs.
+
+## Building ONNX Runtime
+You should be able to just run ./tidl_build.sh in this directory. Cmake must be installed.
+
+## Demos
+
+### Basic Demo
+[Basic Demo documentation](https://bitbucket.itg.ti.com/users/a0226847/repos/onnxruntime/browse/tidl_demos/basic_demo)
+
+### Image Classification Demo
+[Image Classification Demo documentation](https://bitbucket.itg.ti.com/users/a0226847/repos/onnxruntime/browse/tidl_demos/classification_demo)

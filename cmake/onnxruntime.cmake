@@ -55,6 +55,9 @@ endfunction()
 
 get_c_cxx_api_headers(ONNXRUNTIME_PUBLIC_HEADERS)
 
+list(APPEND ${_HEADERS} "${CMAKE_CURRENT_BINARY_DIR}/_deps/mp11-src/include/boost/mp11.hpp")
+list(APPEND ${_HEADERS} "${CMAKE_FIND_ROOT_PATH}/usr/lib/python3.10/site-packages/numpy/core/include")
+
 if(onnxruntime_BUILD_SHARED_LIB)
   #If you want to verify if there is any extra line in symbols.txt, run
   # nm -C -g --defined libonnxruntime.so |grep -v '\sA\s' | cut -f 3 -d ' ' | sort
@@ -220,6 +223,7 @@ set(onnxruntime_INTERNAL_PROVIDER_LIBRARIES
   ${PROVIDERS_ARMNN}
   ${PROVIDERS_COREML}
   ${PROVIDERS_DML}
+  ${PROVIDERS_TIDL}
   ${PROVIDERS_NNAPI}
   ${PROVIDERS_SNPE}
   ${PROVIDERS_RKNPU}

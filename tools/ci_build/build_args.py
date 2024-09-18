@@ -612,6 +612,12 @@ def add_execution_provider_args(parser: argparse.ArgumentParser) -> None:
         help="Enable CUDA kernel profiling (requires CUPTI in PATH).",
     )
 
+    # --- TIDL ---
+    tidl_group = parser.add_argument_group("TIDL Execution Provider")
+    tidl_group.add_argument("--use_tidl", action="store_true", help="Enable TIDL EP.")
+    tidl_group.add_argument("--use_tiie", action='store_true', help="Enable with TI Inference engine.")
+    tidl_group.add_argument("--ti_inference_engine_path", default="ti-inference-engine", help="Path to ti-inference-engine.")
+
     # --- DNNL (formerly MKL-DNN / oneDNN) ---
     dnnl_group = parser.add_argument_group("DNNL Execution Provider")
     dnnl_group.add_argument("--use_dnnl", action="store_true", help="Enable DNNL EP.")

@@ -72,6 +72,8 @@ elif parse_arg_remove_boolean(sys.argv, "--use_migraphx"):
 elif parse_arg_remove_boolean(sys.argv, "--use_openvino"):
     is_openvino = True
     package_name = "onnxruntime-openvino"
+elif parse_arg_remove_boolean(sys.argv, "--use_tidl"):
+    package_name = 'onnxruntime-tidl'
 elif parse_arg_remove_boolean(sys.argv, "--use_dnnl"):
     package_name = "onnxruntime-dnnl"
 elif parse_arg_remove_boolean(sys.argv, "--use_tvm"):
@@ -833,10 +835,5 @@ setup(
     extras_require=extras_require,
     python_requires=">=3.10",
     keywords="onnx machine learning",
-    entry_points={
-        "console_scripts": [
-            "onnxruntime_test = onnxruntime.tools.onnxruntime_test:main",
-        ]
-    },
     classifiers=classifiers,
 )

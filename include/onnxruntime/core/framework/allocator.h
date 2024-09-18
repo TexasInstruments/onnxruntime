@@ -343,6 +343,9 @@ class CPUAllocator : public IAllocator {
   void Free(void* p) override;
 };
 
+// used in onnx_messages.cc
+using TAllocator = CPUAllocator;
+
 void* AllocatorDefaultAlloc(size_t size);
 void AllocatorDefaultFree(void* p);
 void* AllocatorDefaultAllocAligned(size_t size, size_t alignment);
