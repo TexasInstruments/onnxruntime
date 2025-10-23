@@ -5,6 +5,7 @@
 #include "core/providers/tidl/tidl_provider_factory.h"
 #include "tidl_execution_provider.h"
 #include "core/session/abi_session_options_impl.h"
+#include "core/session/inference_session.h"
 
 using namespace onnxruntime;
 
@@ -53,5 +54,35 @@ ORT_API_STATUS_IMPL(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessi
   options_tidl_onnx_vec.push_back(std::make_pair("core_number", std::to_string(options_tidl_onnx->core_number)));
 
   options->provider_factories.push_back(onnxruntime::CreateExecutionProviderFactory_Tidl("", options_tidl_onnx_vec));
+  return nullptr;
+}
+
+ORT_API_STATUS_IMPL(OrtSessionGetTIBenchmarkData_Tidl, _In_ OrtSession* session, _Out_ c_api_tidl_benchmark_data * benchmark_data) {
+
+  int32_t i = 0;
+  std::vector<std::pair<std::string, uint64_t>> data = {};
+  auto inference_session = reinterpret_cast<::onnxruntime::InferenceSession*>(session);
+  data = inference_session->get_TI_benchmark_data();
+
+  benchmark_data->run_start = data[i++].second;
+  benchmark_data->run_end = data[i++].second;
+  benchmark_data->ddr_read_start = data[i++].second;
+  benchmark_data->ddr_read_end = data[i++].second;
+  benchmark_data->ddr_write_start = data[i++].second;
+  benchmark_data->ddr_write_end = data[i++].second;
+
+  benchmark_data->num_subgraph_data = 0;
+
+  while (i < data.size())
+  {
+    benchmark_data->copy_in_start[benchmark_data->num_subgraph_data] = data[i++].second;
+    benchmark_data->copy_in_end[benchmark_data->num_subgraph_data] = data[i++].second;
+    benchmark_data->proc_start[benchmark_data->num_subgraph_data] = data[i++].second;
+    benchmark_data->proc_end[benchmark_data->num_subgraph_data] = data[i++].second;
+    benchmark_data->copy_out_start[benchmark_data->num_subgraph_data] = data[i++].second;
+    benchmark_data->copy_out_end[benchmark_data->num_subgraph_data] = data[i++].second;
+    benchmark_data->num_subgraph_data++;
+  }
+
   return nullptr;
 }
