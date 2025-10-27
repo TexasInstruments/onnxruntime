@@ -43,35 +43,42 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   InsertAllocator(CreateAllocator(default_memory_info));
   InsertAllocator(CreateAllocator(cpu_memory_info));
   TIDLProviderOptions interface_options = info.options_tidl_onnx_vec;
+  bool status = true;
 
   is_import_ = (info.type == "TIDLCompilationProvider");
 
   if(is_import_)
   {
     std::string tidl_tools_path;
-    for (auto _ : info.options_tidl_onnx_vec) {
+    for (auto _ : info.options_tidl_onnx_vec)
+    {
       auto key = _.first;
       auto value = _.second;
       if(key == "tidl_tools_path")
+      {
         tidl_tools_path = value;
+      }
     }
+
     tidl_ops_->lib = dlopen((tidl_tools_path + "/tidl_model_import_onnx.so").c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if(! tidl_ops_->lib)
+    if(!tidl_ops_->lib)
     {
       printf("Error -   %s \n", dlerror());
+      status = false;
     }
-    assert(tidl_ops_->lib);
+    ORT_ENFORCE(status == true, "Could not open tidl_model_import_onnx.so");
   }
   else
   {
     tidl_ops_->lib = dlopen("libtidl_onnxrt_EP.so", RTLD_NOW | RTLD_GLOBAL);
-    if(! tidl_ops_->lib)
+    if(!tidl_ops_->lib)
     {
       printf("Error -   %s \n", dlerror());
     }
+    ORT_ENFORCE(status == true, "Could not open libtidl_onnxrt_EP.so");
     printf("libtidl_onnxrt_EP loaded %p \n", tidl_ops_->lib);
-    assert(tidl_ops_->lib);
- }
+  }
+
   tidl_ops_->TIDL_getSupportedNodesImport = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodesImport)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodesImport"));
   tidl_ops_->TIDL_getSupportedNodesInfer = reinterpret_cast<decltype(tidl_ops_->TIDL_getSupportedNodesInfer)>(dlsym(tidl_ops_->lib, "TIDL_getSupportedNodesInfer"));
   tidl_ops_->TIDL_populateOptions = reinterpret_cast<decltype(tidl_ops_->TIDL_populateOptions)>(dlsym(tidl_ops_->lib, "TIDL_populateOptions"));
@@ -85,15 +92,33 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   tidl_ops_->TIDLEP_getSubGraphStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getSubGraphStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getSubGraphStats"));
   tidl_ops_->TIDLEP_checkCompatibility = reinterpret_cast<decltype(tidl_ops_->TIDLEP_checkCompatibility)>(dlsym(tidl_ops_->lib, "TIDLEP_checkCompatibility"));
 
-  bool status = false;
+  if (tidl_ops_->TIDL_populateOptions == nullptr || tidl_ops_->TIDLEP_checkCompatibility == nullptr || tidl_ops_->TIDL_computeInvokeFunc == nullptr || tidl_ops_->TIDL_releaseRtFunc == nullptr || tidl_ops_->TIDL_getOutputShape == nullptr)
+  {
+    status = false;
+  }
+
+  if(is_import_)
+	{
+    if (tidl_ops_->TIDL_getSupportedNodesImport == nullptr || tidl_ops_->TIDL_createStateImportFunc == nullptr || tidl_ops_->TIDL_computeImportFunc == nullptr)
+    {
+      status = false;
+    }
+	}
+  else
+  {
+    if (tidl_ops_->TIDL_getSupportedNodesInfer == nullptr || tidl_ops_->TIDL_createStateInferFunc == nullptr)
+    {
+      status = false;
+    }
+  }
+
+  ORT_ENFORCE(status == true, "Could not load function from share object file");
 
   status = tidl_ops_->TIDLEP_checkCompatibility(OrtGetApiBase()->GetVersionString());
   ORT_ENFORCE(status == true, "Version compatibility check failed.");
 
   status = tidl_ops_->TIDL_populateOptions(interface_options);
   ORT_ENFORCE(status == true);
-
-  // TODO : how to pass error if status is false?
 }
 
 TidlExecutionProvider::~TidlExecutionProvider() {
@@ -606,7 +631,7 @@ Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fuse
       }
       status = populateOnnxRtOutputParams(ort, context, tidl_ops_, state_subGraph);
       if(status != 0)
-        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Populare OnnxRT Output Params Failed.");
+        return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Populate OnnxRT Output Params Failed.");
       status = tidl_ops_->TIDL_computeInvokeFunc(state_subGraph);
       if(status != 0)
         return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Compute Invoke Failed.");
