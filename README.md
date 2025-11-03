@@ -17,7 +17,7 @@
 
 * [**Upcoming Release Roadmap**](https://github.com/microsoft/onnxruntime/wiki/Upcoming-Release-Roadmap)
 
-* **Companion sample repositories**: 
+* **Companion sample repositories**:
   - ONNX Runtime Inferencing: [microsoft/onnxruntime-inference-examples](https://github.com/microsoft/onnxruntime-inference-examples)
   - ONNX Runtime Training: [microsoft/onnxruntime-training-examples](https://github.com/microsoft/onnxruntime-training-examples)
 
@@ -56,11 +56,6 @@ or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any addi
 
 This project is licensed under the [MIT License](LICENSE).
 
-###################################################################################################################################################################################################################
-## Addicional changes for ARM crosscompilation
+## TIDL Execution Provider
 
-Modify tools path inside tool.cmake. Example path below
-
-	SET(tools /home/alice/tools/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu)
-
-
+This particular branch enables the TIDL Execution Provider for running on TI devices by interfacing with TI's deep learning library (TIDL) via ONNXRUNTIME interface. The TIDL Execution Provider allows ONNX models to be accelerated on Texas Instruments SoCs by leveraging the TIDL hardware accelerators, providing optimized performance for deep learning inference workloads on TI devices. [Learn more &rarr;](onnxruntime/core/providers/tidl/README.md)
