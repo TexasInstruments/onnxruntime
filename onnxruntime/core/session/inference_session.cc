@@ -3013,8 +3013,13 @@ Status InferenceSession::Run(const RunOptions& run_options,
       // log evaluation start to trace logging provider
       env.GetTelemetryProvider().LogEvaluationStart();
 
-      ORT_RETURN_IF_ERROR_SESSIONID_(ValidateInputs(feed_names, feeds));
-      ORT_RETURN_IF_ERROR_SESSIONID_(ValidateOutputs(output_names, p_fetches));
+      if(!disable_validate_inputs) {
+        ORT_RETURN_IF_ERROR_SESSIONID_(ValidateInputs(feed_names, feeds));
+      }
+
+      if(!disable_validate_outputs) {
+        ORT_RETURN_IF_ERROR_SESSIONID_(ValidateOutputs(output_names, p_fetches));
+      }
 
       // shrink certain default memory arenas if the user has requested for it
       const std::string& shrink_memory_arenas =
@@ -3982,5 +3987,26 @@ std::vector<std::pair<std::string, uint64_t>> InferenceSession::get_TI_benchmark
   }
   return res;
 }
+
+void InferenceSession::disableValidateInputs()
+{
+  disable_validate_inputs = true;
+}
+
+void InferenceSession::enableValidateInputs()
+{
+  disable_validate_inputs = false;
+}
+
+void InferenceSession::disableValidateOutputs()
+{
+  disable_validate_outputs = true;
+}
+
+void InferenceSession::enableValidateOutputs()
+{
+  disable_validate_outputs = false;
+}
+
 #endif
 }  // namespace onnxruntime

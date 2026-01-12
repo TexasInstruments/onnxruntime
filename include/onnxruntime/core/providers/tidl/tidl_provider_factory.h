@@ -38,6 +38,7 @@ typedef struct
 ORT_API_STATUS(OrtSessionsOptionsSetDefault_Tidl, _In_ c_api_tidl_options * tidl_options);
 ORT_API_STATUS(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessionOptions* options, c_api_tidl_options * tidl_options);
 ORT_API_STATUS_IMPL(OrtSessionGetTIBenchmarkData_Tidl, _In_ OrtSession* session, _Out_ c_api_tidl_benchmark_data * benchmark_data);
+ORT_API_STATUS_IMPL(OrtSessionDisableIOValidation_Tidl, _In_ OrtSession* session);
 
 #ifdef __cplusplus
 }
