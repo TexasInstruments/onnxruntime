@@ -39,7 +39,7 @@ void CollectFrames(std::vector<uint8_t> &output,
     cv::resize(in_image, image, cv::Size(width, height));
     cv::Mat *spl = new cv::Mat[channels];
     split(image,spl);
-    
+
     // Read the frame in NCHW format
     output.resize(height * width * channels);
     int idx = 0;
@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
     std::string model_path = "";
     std::string image_path = "";
     std::string labels_path = "";
-    
+
     int tidl_flag = 0;
     int index;
     int c;
@@ -120,29 +120,29 @@ int main(int argc, char* argv[])
         printf ("!!! Ignoring argument %s\n", argv[index]);
     }
 
-    
+
     OrtStatus *status;
-    
+
     // Initialize  enviroment, maintains thread pools and state info
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "test");
-    
+
     // Initialize session options
     Ort::SessionOptions session_options;
     session_options.SetIntraOpNumThreads(1);
 
-    c_api_tidl_options * options = (c_api_tidl_options *)malloc(sizeof(c_api_tidl_options));
-    OrtSessionsOptionsSetDefault_Tidl(options);
-    strcpy(options->import, "no");
-    strcpy(options->artifacts_folder, "../../../onnxrt-artifacts/");
+    c_api_tidl_options *tidl_options = (c_api_tidl_options *)malloc(sizeof(c_api_tidl_options));
+    OrtSessionOptionsInitialize_Tidl(tidl_options);
+    OrtSessionOptionsSet_Tidl(tidl_options, "artifacts_folder", "../../../onnxrt-artifacts/");
+    OrtSessionOptionsSet_Tidl(tidl_options, "debug_level", "0");
 
     if (tidl_flag)
     {
-        status = OrtSessionOptionsAppendExecutionProvider_Tidl(session_options, options);
+        status = OrtSessionOptionsAppendExecutionProvider_Tidl(session_options, tidl_options);
     } else
     {
         status = OrtSessionOptionsAppendExecutionProvider_Dnnl(session_options, 1);
     }
-    
+
     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
 
     // Create Validator
@@ -159,4 +159,3 @@ int main(int argc, char* argv[])
     printf("Done!\n");
     return 0;
 }
-

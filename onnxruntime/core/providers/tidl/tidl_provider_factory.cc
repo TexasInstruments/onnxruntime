@@ -6,6 +6,9 @@
 #include "tidl_execution_provider.h"
 #include "core/session/abi_session_options_impl.h"
 #include "core/session/inference_session.h"
+#include "core/session/ort_apis.h"
+#include <string.h>
+#include <float.h>
 
 using namespace onnxruntime;
 
@@ -34,31 +37,93 @@ std::shared_ptr<IExecutionProviderFactory> CreateExecutionProviderFactory_Tidl(c
 
 }  // namespace onnxruntime
 
-ORT_API_STATUS_IMPL(OrtSessionsOptionsSetDefault_Tidl, _In_ c_api_tidl_options * options_tidl_onnx) {
+ORT_API_STATUS_IMPL(OrtSessionOptionsInitialize_Tidl, _Inout_ c_api_tidl_options* options) {
+  if (options == nullptr)
+  {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Invalid argument: options is null");
+  }
 
-  memset(options_tidl_onnx, 0, sizeof(c_api_tidl_options));
-  options_tidl_onnx->debug_level = 0;
-  options_tidl_onnx->priority = 0;
-  options_tidl_onnx->max_pre_empt_delay = FLT_MAX;
-  options_tidl_onnx->core_number = 1;
+  // Initialize the options structure
+  memset(options, 0, sizeof(c_api_tidl_options));
+  options->count = 0;
+
   return nullptr;
 }
 
-ORT_API_STATUS_IMPL(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessionOptions* options, c_api_tidl_options * options_tidl_onnx) {
+ORT_API_STATUS_IMPL(OrtSessionOptionsSet_Tidl, _Inout_ c_api_tidl_options* options, _In_ const char* key, _In_ const char* value) {
+  if (options == nullptr || key == nullptr || value == nullptr)
+  {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Invalid arguments: options, key, or value is null");
+  }
+
+  // Check if the key already exists, if so update it
+  for (int i = 0; i < options->count; i++)
+  {
+    if (strcmp(options->option[i].key, key) == 0)
+    {
+      strncpy(options->option[i].value, value, TIDL_MAX_STRING_LENGTH - 1);
+      options->option[i].value[TIDL_MAX_STRING_LENGTH - 1] = '\0';
+      return nullptr;
+    }
+  }
+
+  // If key doesn't exist, add it if there's space
+  if (options->count < TIDL_MAX_OPTIONS)
+  {
+    strncpy(options->option[options->count].key, key, TIDL_MAX_STRING_LENGTH - 1);
+    options->option[options->count].key[TIDL_MAX_STRING_LENGTH - 1] = '\0';
+
+    strncpy(options->option[options->count].value, value, TIDL_MAX_STRING_LENGTH - 1);
+    options->option[options->count].value[TIDL_MAX_STRING_LENGTH - 1] = '\0';
+
+    options->count++;
+    return nullptr;
+  }
+
+  return OrtApis::CreateStatus(ORT_FAIL, "Maximum number of options exceeded");
+}
+
+ORT_API_STATUS_IMPL(OrtSessionOptionsGet_Tidl, _In_ const c_api_tidl_options* options, _In_ const char* key,
+                    _Out_writes_bytes_all_(value_len) char* value, _In_ size_t value_len) {
+  if (options == nullptr || key == nullptr || value == nullptr)
+  {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Invalid arguments: options, key, or value is null");
+  }
+
+  for (int i = 0; i < options->count; i++)
+  {
+    if (strcmp(options->option[i].key, key) == 0)
+    {
+      strncpy(value, options->option[i].value, value_len - 1);
+      value[value_len - 1] = '\0';
+      return nullptr;
+    }
+  }
+
+  return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Option not found");
+}
+
+ORT_API_STATUS_IMPL(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessionOptions* options, _In_ const c_api_tidl_options* tidl_options) {
+  if (options == nullptr || tidl_options == nullptr)
+  {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Invalid arguments: options or tidl_options is null");
+  }
+
   TIDLProviderOptions options_tidl_onnx_vec;
 
-  options_tidl_onnx_vec.push_back(std::make_pair("debug_level", std::to_string(options_tidl_onnx->debug_level)));
-  options_tidl_onnx_vec.push_back(std::make_pair("priority", std::to_string(options_tidl_onnx->priority)));
-  options_tidl_onnx_vec.push_back(std::make_pair("max_pre_empt_delay", std::to_string(options_tidl_onnx->max_pre_empt_delay)));
-  options_tidl_onnx_vec.push_back(std::make_pair("artifacts_folder", std::string(options_tidl_onnx->artifacts_folder)));
-  options_tidl_onnx_vec.push_back(std::make_pair("core_number", std::to_string(options_tidl_onnx->core_number)));
+  for (int i = 0; i < tidl_options->count; i++)
+  {
+    options_tidl_onnx_vec.push_back(std::make_pair(
+      std::string(tidl_options->option[i].key),
+      std::string(tidl_options->option[i].value)
+    ));
+  }
 
   options->provider_factories.push_back(onnxruntime::CreateExecutionProviderFactory_Tidl("", options_tidl_onnx_vec));
   return nullptr;
 }
 
-ORT_API_STATUS_IMPL(OrtSessionGetTIBenchmarkData_Tidl, _In_ OrtSession* session, _Out_ c_api_tidl_benchmark_data * benchmark_data) {
-
+ORT_API_STATUS_IMPL(OrtSessionGetTIBenchmarkData_Tidl, _In_ OrtSession* session, _Out_ c_api_tidl_benchmark_data* benchmark_data) {
   int32_t i = 0;
   std::vector<std::pair<std::string, uint64_t>> data = {};
   auto inference_session = reinterpret_cast<::onnxruntime::InferenceSession*>(session);

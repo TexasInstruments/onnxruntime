@@ -1,4 +1,6 @@
+OrtSessionOptionsInitialize_Tidl
+OrtSessionOptionsSet_Tidl
+OrtSessionOptionsGet_Tidl
 OrtSessionOptionsAppendExecutionProvider_Tidl
-OrtSessionsOptionsSetDefault_Tidl
 OrtSessionGetTIBenchmarkData_Tidl
 OrtSessionDisableIOValidation_Tidl
