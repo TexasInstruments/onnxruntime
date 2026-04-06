@@ -151,11 +151,3 @@ ORT_API_STATUS_IMPL(OrtSessionGetTIBenchmarkData_Tidl, _In_ OrtSession* session,
 
   return nullptr;
 }
-
-ORT_API_STATUS_IMPL(OrtSessionDisableIOValidation_Tidl, _In_ OrtSession* session) {
-
-  auto inference_session = reinterpret_cast<::onnxruntime::InferenceSession*>(session);
-  inference_session->disableValidateInputs();
-  inference_session->disableValidateOutputs();
-  return nullptr;
-}

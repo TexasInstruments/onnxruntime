@@ -590,26 +590,6 @@ class InferenceSession {
    */
   std::vector<std::pair<std::string, uint64_t>> get_TI_benchmark_data();
 
-  /**
-   * Disable validate inputs check
-   */
-  void disableValidateInputs();
-
-  /**
-   * Enable validate inputs check
-   */
-  void enableValidateInputs();
-
-  /**
-   * Disable validate outputs check
-   */
-  void disableValidateOutputs();
-
-  /**
-   * Enable validate outputs check
-   */
-  void enableValidateOutputs();
-
   const SessionState& GetSessionState() const {
     ORT_ENFORCE(session_state_ != nullptr, "Session must be initialized to create session state.");
     return *session_state_;
@@ -957,6 +937,11 @@ class InferenceSession {
   bool is_inited_ = false;                   // GUARDED_BY(session_mutex_)
   bool is_concurrent_run_supported_ = true;  // Graph execution in Run is GUARDED_BY(session_mutex_) if false
 
+  // Cached flags from session config options to avoid repeated string lookups during Run().
+  // Set once during Initialize().
+  bool disable_input_validation_ = false;   // kOrtSessionOptionsConfigDisableInputValidation
+  bool disable_output_validation_ = false;  // kOrtSessionOptionsConfigDisableOutputValidation
+
 #ifdef ENABLE_LANGUAGE_INTEROP_OPS
   InterOpDomains interop_domains_;
 #endif
@@ -1012,9 +997,6 @@ class InferenceSession {
 
   uint64_t run_start_ts, run_start_ddr_read, run_start_ddr_write;
   uint64_t run_end_ts, run_end_ddr_read, run_end_ddr_write;
-
-  bool disable_validate_inputs{false};
-  bool disable_validate_outputs{false};
 
   // This holds the actual model data
   // In case if the session is started with an input byte array contains model data, and the caller

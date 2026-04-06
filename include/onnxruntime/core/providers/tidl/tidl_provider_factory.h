@@ -55,9 +55,6 @@ ORT_API_STATUS(OrtSessionOptionsAppendExecutionProvider_Tidl, _In_ OrtSessionOpt
 // Get TIDL Performance data
 ORT_API_STATUS(OrtSessionGetTIBenchmarkData_Tidl, _In_ OrtSession* session, _Out_ c_api_tidl_benchmark_data* benchmark_data);
 
-// Disable ONNX Runtime IO validation
-ORT_API_STATUS_IMPL(OrtSessionDisableIOValidation_Tidl, _In_ OrtSession* session);
-
 #ifdef __cplusplus
 }
 #endif

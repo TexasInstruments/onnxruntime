@@ -3,4 +3,3 @@ OrtSessionOptionsSet_Tidl
 OrtSessionOptionsGet_Tidl
 OrtSessionOptionsAppendExecutionProvider_Tidl
 OrtSessionGetTIBenchmarkData_Tidl
-OrtSessionDisableIOValidation_Tidl
