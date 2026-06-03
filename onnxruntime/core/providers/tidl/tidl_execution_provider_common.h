@@ -23,9 +23,12 @@ typedef struct {
   int8_t  inDataNames[TIDL_MAX_ALG_IN_BUFS][TIDL_STRING_SIZE];
   int8_t  outDataNames[TIDL_MAX_ALG_OUT_BUFS][TIDL_STRING_SIZE];
   void *  inputTensorData[TIDL_MAX_ALG_IN_BUFS];
-  void *  outputTensorData[TIDL_MAX_ALG_IN_BUFS];
+  void *  outputTensorData[TIDL_MAX_ALG_OUT_BUFS];
   int64_t inputTensorElementType[TIDL_MAX_ALG_IN_BUFS];
-  int64_t outputTensorElementType[TIDL_MAX_ALG_IN_BUFS];
+  int64_t outputTensorElementType[TIDL_MAX_ALG_OUT_BUFS];
+  int32_t outputTensorShape[TIDL_MAX_ALG_OUT_BUFS][TIDL_MAX_DIM];
+  int32_t outputTensorPitch[TIDL_MAX_ALG_OUT_BUFS][TIDL_MAX_DIM - 1];
+  uint8_t outIsDynamic[TIDL_MAX_ALG_OUT_BUFS];
 } onnxRtParams_t;
 
 typedef struct
@@ -62,7 +65,7 @@ extern "C"
   int32_t TIDL_computeImportFunc(OnnxTIDLSubGraphParams * state_subGraph, std::string * string_buf, int32_t opSetVersion);
   int32_t TIDL_computeInvokeFunc(OnnxTIDLSubGraphParams * state_subGraph);
   int32_t TIDL_releaseRtFunc(OnnxTIDLSubGraphParams * state_subGraph);
-  int32_t TIDL_getOutputShape(void * ioBufDescVPtr, int8_t onnxName[], std::vector<int64_t> &shape);
+  int32_t TIDL_getOutputShapeAndPitch(void * ioBufDescVPtr, onnxRtParams_t * onnxRtParams, int8_t onnxName[], std::vector<int64_t> &shape, std::vector<int64_t> &pitch);
   int32_t TIDLEP_getDdrStats(uint64_t * read, uint64_t * write);
   int32_t TIDLEP_getSubGraphStats(OnnxTIDLSubGraphParams * state_subGraph, char **node_name, void **node_data);
   bool TIDLEP_checkCompatibility(const char *ortVersion);

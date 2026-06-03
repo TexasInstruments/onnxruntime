@@ -70,11 +70,11 @@ TidlExecutionProvider::TidlExecutionProvider(const TidlExecutionProviderInfo& in
   tidl_ops_->TIDL_computeImportFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeImportFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeImportFunc"));
   tidl_ops_->TIDL_computeInvokeFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_computeInvokeFunc)>(dlsym(tidl_ops_->lib, "TIDL_computeInvokeFunc"));
   tidl_ops_->TIDL_releaseRtFunc = reinterpret_cast<decltype(tidl_ops_->TIDL_releaseRtFunc)>(dlsym(tidl_ops_->lib, "TIDL_releaseRtFunc"));
-  tidl_ops_->TIDL_getOutputShape = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShape)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShape"));
+  tidl_ops_->TIDL_getOutputShapeAndPitch = reinterpret_cast<decltype(tidl_ops_->TIDL_getOutputShapeAndPitch)>(dlsym(tidl_ops_->lib, "TIDL_getOutputShapeAndPitch"));
   tidl_ops_->TIDLEP_getDdrStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getDdrStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getDdrStats"));
   tidl_ops_->TIDLEP_getSubGraphStats = reinterpret_cast<decltype(tidl_ops_->TIDLEP_getSubGraphStats)>(dlsym(tidl_ops_->lib, "TIDLEP_getSubGraphStats"));
   tidl_ops_->TIDLEP_checkCompatibility = reinterpret_cast<decltype(tidl_ops_->TIDLEP_checkCompatibility)>(dlsym(tidl_ops_->lib, "TIDLEP_checkCompatibility"));
-  if (tidl_ops_->TIDL_populateOptions == nullptr || tidl_ops_->TIDLEP_checkCompatibility == nullptr || tidl_ops_->TIDL_computeInvokeFunc == nullptr || tidl_ops_->TIDL_releaseRtFunc == nullptr || tidl_ops_->TIDL_getOutputShape == nullptr)
+  if (tidl_ops_->TIDL_populateOptions == nullptr || tidl_ops_->TIDLEP_checkCompatibility == nullptr || tidl_ops_->TIDL_computeInvokeFunc == nullptr || tidl_ops_->TIDL_releaseRtFunc == nullptr || tidl_ops_->TIDL_getOutputShapeAndPitch == nullptr)
   {
     status = false;
   }
@@ -362,6 +362,26 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   return result;
 }
+static size_t getElementSizeFromOrtType(int64_t elemType)
+{
+  switch (elemType)
+  {
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:   return 4;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE:  return 8;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:   return 1;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:    return 1;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL:    return 1;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16:  return 2;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16:   return 2;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16: return 2;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32:  return 4;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:   return 4;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64:  return 8;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:   return 8;
+    default: return 0;
+  }
+}
+
 int32_t populateOnnxRtInputParams(const OrtApi *ort, OrtKernelContext *context,
                                   tidl_ops *tidl_ops, OnnxTIDLSubGraphParams *state_subGraph)
 {
@@ -458,9 +478,27 @@ int32_t populateOnnxRtOutputParams(const OrtApi *ort, OrtKernelContext * context
   for (int j = 0; j < onnxRtParams->numNetOutData; j++)
   {
     std::vector<int64_t> nchw_shape{};
-    status = tidl_ops->TIDL_getOutputShape(state_subGraph->tidlRtParams.ioBufDesc, onnxRtParams->outDataNames[j], nchw_shape);
-    if(status != 0)
-      return status;
+    std::vector<int64_t> pitch{};
+    status = tidl_ops->TIDL_getOutputShapeAndPitch(state_subGraph->tidlRtParams.ioBufDesc, NULL, onnxRtParams->outDataNames[j], nchw_shape, pitch);
+    (void)pitch;
+
+    if(status != 0 || nchw_shape.empty())
+      return -1;
+
+    /* For dynamic outputs, allocate a temp buffer for TIDL to write into on every invoke.
+     * KernelContext_GetOutput will be called once post-invoke with the actual shape,
+     * avoiding a shape mismatch in the ORT output tensor. */
+    if (onnxRtParams->outIsDynamic[j])
+    {
+      /* Element type is set from ONNX graph at createState time */
+      size_t elem_size = getElementSizeFromOrtType(onnxRtParams->outputTensorElementType[j]);
+      if (elem_size == 0)
+        return -1;
+      size_t num_elements = 1;
+      for (auto dim : nchw_shape) num_elements *= static_cast<size_t>(dim);
+      onnxRtParams->outputTensorData[j] = malloc(num_elements * elem_size);
+      continue;
+    }
 
     OrtValue *output_tensor = NULL;
     OrtTensorTypeAndShapeInfo *output_tesnor_info = NULL;
@@ -540,6 +578,7 @@ Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fuse
       OnnxTIDLSubGraphParams *state_subGraph = (OnnxTIDLSubGraphParams*)malloc(sizeof(OnnxTIDLSubGraphParams));
 
       state_subGraph->serialNumber = subgraph_serial_number_;
+      memset(state_subGraph->onnxRtParams.outIsDynamic, 0, sizeof(state_subGraph->onnxRtParams.outIsDynamic));
 
       if(is_import_)
       {
@@ -569,9 +608,13 @@ Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fuse
     {///* !!AL!! Changes OrtCustomApi* to OrtApi* */
       int32_t status = 0;
       OnnxTIDLSubGraphParams *state_subGraph = reinterpret_cast<OnnxTIDLSubGraphParams*>(state);
+
+      /* Populate Input tensors parameters*/
       status = populateOnnxRtInputParams(api, context, tidl_ops_, state_subGraph);
       if(status != 0)
         return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Populate OnnxRT Input Params Failed.");
+
+      /* If import, call import compute function */
       if(is_import_)
       {
         std::string * string_buf = reinterpret_cast<std::string *>(state_subGraph->string_buf);
@@ -579,12 +622,76 @@ Status TidlExecutionProvider::Compile(const std::vector<FusedNodeAndGraph>& fuse
         if(status != 0)
           return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Compute Import Failed.");
       }
+
+      /* Populate Output tensors parameters*/
       status = populateOnnxRtOutputParams(api, context, tidl_ops_, state_subGraph);
       if(status != 0)
         return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Populate OnnxRT Output Params Failed.");
+
+      /* Call Invoke */
       status = tidl_ops_->TIDL_computeInvokeFunc(state_subGraph);
       if(status != 0)
         return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Compute Invoke Failed.");
+
+      /* Propagate dynamic output shapes back to OnnxRuntime */
+      onnxRtParams_t * onnxRtParams = &state_subGraph->onnxRtParams;
+
+      for (int j = 0; j < state_subGraph->numOutputs; j++)
+      {
+        if (onnxRtParams->outIsDynamic[j])
+        {
+          std::vector<int64_t> actual_shape;
+          std::vector<int64_t> actual_pitch;
+          status = tidl_ops_->TIDL_getOutputShapeAndPitch(state_subGraph->tidlRtParams.ioBufDesc, onnxRtParams, onnxRtParams->outDataNames[j], actual_shape, actual_pitch);
+          if (status != 0 || actual_shape.empty())
+            return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Resolve Dynamic Output Shape Failed.");
+
+          if (actual_pitch.size() != actual_shape.size() - 1)
+            return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Resolve Dynamic Output Pitch Failed.");
+
+          OrtValue *new_output = nullptr;
+          Ort::ThrowOnError(api->KernelContext_GetOutput(context, j, actual_shape.data(), actual_shape.size(), &new_output));
+
+          void *new_data = nullptr;
+          Ort::ThrowOnError(api->GetTensorMutableData(new_output, &new_data));
+
+          size_t elem_size = getElementSizeFromOrtType(onnxRtParams->outputTensorElementType[j]);
+          if (elem_size == 0)
+            return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "TIDL Dynamic Output: unsupported element type.");
+
+          /* General strided copy: for each outer-dim combination, compute the source
+           * offset using actual_pitch[d] as the stride for actual_shape[d], then
+           * memcpy the innermost (WIDTH) row into the packed destination.
+           * actual_pitch[d] == stride for actual_shape[d] (same index ordering). */
+          const int8_t *src = static_cast<const int8_t *>(onnxRtParams->outputTensorData[j]);
+          int8_t *dst = static_cast<int8_t *>(new_data);
+
+          size_t total_rows = 1;
+          for (size_t d = 0; d + 1 < actual_shape.size(); d++)
+          {
+            total_rows *= static_cast<size_t>(actual_shape[d]);
+          }
+
+          int64_t W = actual_shape.back();
+          size_t row_bytes = static_cast<size_t>(W) * elem_size;
+          for (size_t row = 0; row < total_rows; row++)
+          {
+            size_t tmp = row;
+            size_t src_off = 0;
+            for (int32_t d = static_cast<int32_t>(actual_shape.size()) - 2; d >= 0; d--)
+            {
+              size_t idx = tmp % static_cast<size_t>(actual_shape[d]);
+              tmp /= static_cast<size_t>(actual_shape[d]);
+              src_off += idx * static_cast<size_t>(actual_pitch[d]);
+            }
+            memcpy(dst + row * row_bytes, src + src_off * elem_size, row_bytes);
+          }
+
+          free(onnxRtParams->outputTensorData[j]);
+          onnxRtParams->outputTensorData[j] = new_data;
+        }
+      }
+
       return Status::OK();
     };
 
