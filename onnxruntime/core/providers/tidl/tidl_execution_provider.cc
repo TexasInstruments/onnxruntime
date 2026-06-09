@@ -321,13 +321,17 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
       }
 
       for (auto it = fused_outputs.begin(), end = fused_outputs.end(); it != end; ++it) {
+        bool is_net_output = false;
         for (const auto& x : all_node_inputs) {
           if (x->Name() == it->first->Name()) {
-            outputs.insert(std::pair<int, const NodeArg*>(it->second, it->first));
+            is_net_output = true;
             break;
           }
         }
         if (std::find(graph_outputs.begin(), graph_outputs.end(), it->first) != graph_outputs.end()) {
+          is_net_output = true;
+        }
+        if (is_net_output) {
           outputs.insert(std::pair<int, const NodeArg*>(it->second, it->first));
         }
       }
