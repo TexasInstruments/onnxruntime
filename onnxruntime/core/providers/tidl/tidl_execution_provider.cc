@@ -156,6 +156,20 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
 
   onnx::GraphProto onnxGraph = model_proto.graph();
 
+  // Embed graph context into model metadata so TIDL_getSupportedNodesImport
+  // can read everything it needs from the serialized proto.
+  auto* meta_subgraph = model_proto.add_metadata_props();
+  meta_subgraph->set_key("is_subgraph");
+  meta_subgraph->set_value(node_graph.IsSubgraph() ? "1" : "0");
+
+  auto* meta_ort_version = model_proto.add_metadata_props();
+  meta_ort_version->set_key("ortVersion");
+  meta_ort_version->set_value(OrtGetApiBase()->GetVersionString());
+
+  auto* meta_opset = model_proto.add_metadata_props();
+  meta_opset->set_key("opsetVersion");
+  meta_opset->set_value(std::to_string(node_graph.DomainToVersionMap().at(kOnnxDomain)));
+
   std::string string_buf;
   string_buf = model_proto.SerializeAsString();
 
@@ -163,12 +177,12 @@ TidlExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph,
   std::vector<std::vector<int>> supported_nodes_vector;
   if(is_import_)
   {
-    status = tidl_ops_->TIDL_getSupportedNodesImport(string_buf, OrtGetApiBase()->GetVersionString(), node_graph.DomainToVersionMap().at(kOnnxDomain), supported_nodes_vector);
+    status = tidl_ops_->TIDL_getSupportedNodesImport(string_buf, supported_nodes_vector);
     ORT_ENFORCE(status == 0, "Could not get supported nodes for compilation.");
   }
   else
   {
-    status = tidl_ops_->TIDL_getSupportedNodesInfer(supported_nodes_vector);
+    status = tidl_ops_->TIDL_getSupportedNodesInfer(supported_nodes_vector, node_graph.IsSubgraph());
     ORT_ENFORCE(status == 0, "Could not get supported nodes for inference.");
   }
 
